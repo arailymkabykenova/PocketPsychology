@@ -1,0 +1,20 @@
+# Python backend
+back/venv/
+back/__pycache__/
+back/.env
+back/*.log
+
+# macOS system files
+.DS_Store
+back/.DS_Store
+front/.DS_Store
+
+# Xcode/iOS build artifacts
+front/QuickHelp/DerivedData/
+front/QuickHelp/*.xcworkspace
+front/QuickHelp/*.xcuserstate
+
+# Общие временные файлы
+*.swp
+*.swo
+*~ 

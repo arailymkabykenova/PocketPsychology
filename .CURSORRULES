@@ -1,0 +1,92 @@
+# Chatbot Project Rules
+
+## Project Architecture
+- **Backend**: FastAPI application handling AI interactions
+- **Frontend**: Swift iOS app with simple chat interface
+- **No Database**: Chat history stored locally on client only
+- **AI Provider**: Azure OpenAI integration
+
+## Backend (FastAPI) Rules
+- Use FastAPI for REST API endpoints
+- Implement three distinct AI conversation modes
+- Handle Azure OpenAI API integration
+- Use async/await for API calls
+- Implement proper error handling and logging
+- Use Pydantic models for request/response validation
+- Keep endpoints simple: POST /chat with mode parameter
+
+## Frontend (Swift) Rules
+- Create minimal, clean iOS interface
+- Implement text input field and mode selector
+- Store chat history locally using UserDefaults or Core Data
+- Use modern SwiftUI for UI components
+- Implement proper error handling for network requests
+- Follow iOS design guidelines (HIG)
+- Use async/await for API calls
+
+## AI Conversation Modes
+
+### 1. Support Mode (Empathetic Listening)
+- **Purpose**: Provide emotional support without giving advice
+- **System Prompt**: Focus on active listening, empathy, and emotional validation
+- **Responses**: "I hear you", "That must be very difficult", "I understand how you feel"
+- **No Advice**: Avoid giving solutions or suggestions
+
+### 2. Analysis Mode (Socratic Dialogue)
+- **Purpose**: Help users reach their own conclusions through questioning
+- **System Prompt**: Ask open-ended questions to guide self-reflection
+- **Responses**: "What did you feel in that moment?", "What thoughts led to this feeling?"
+- **Approach**: Use Socratic method to encourage critical thinking
+
+### 3. Practice Mode (CBT Micro-Advice)
+- **Purpose**: Provide practical techniques and actionable advice
+- **System Prompt**: Offer specific exercises and cognitive reframing techniques
+- **Responses**: "Let's try this exercise...", "How else could you view this situation?"
+- **Focus**: Breathing techniques, thought reframing, practical coping strategies
+
+## Code Quality Standards
+- Use type hints in Python
+- Follow PEP 8 for Python code formatting
+- Use meaningful variable and function names
+- Add docstrings for all functions
+- Implement proper error handling
+- Use environment variables for API keys
+- Add logging for debugging
+
+## Security Guidelines
+- Never hardcode API keys
+- Use environment variables for sensitive data
+- Implement rate limiting for API endpoints
+- Validate all user inputs
+- Use HTTPS for all communications
+
+## Performance Considerations
+- Implement request caching where appropriate
+- Use async operations for I/O bound tasks
+- Optimize API response times
+- Minimize network requests from frontend
+
+## Testing Requirements
+- Write unit tests for backend functions
+- Test all three conversation modes
+- Mock Azure OpenAI API calls in tests
+- Test error handling scenarios
+
+## Documentation
+- Maintain clear API documentation
+- Document system prompts for each mode
+- Keep README updated with setup instructions
+- Document environment variable requirements
+
+## Development Workflow
+- Use virtual environments for Python dependencies
+- Implement proper dependency management
+- Use version control for all changes
+- Test thoroughly before deployment
+
+## UI/UX Guidelines
+- Keep interface simple and intuitive
+- Use clear visual indicators for different modes
+- Implement smooth transitions between modes
+- Ensure accessibility compliance
+- Use modern, clean design principles 
