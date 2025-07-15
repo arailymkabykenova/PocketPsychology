@@ -1,6 +1,30 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Language Models
+enum Language: String, CaseIterable, Codable {
+    case russian = "ru"
+    case english = "en"
+    
+    var displayName: String {
+        switch self {
+        case .russian:
+            return "Русский"
+        case .english:
+            return "English"
+        }
+    }
+    
+    var flag: String {
+        switch self {
+        case .russian:
+            return "🇷🇺"
+        case .english:
+            return "🇺🇸"
+        }
+    }
+}
+
 // MARK: - Chat Models
 struct ChatMessage: Identifiable, Codable, Equatable {
     let id = UUID()
@@ -19,25 +43,49 @@ enum ChatMode: String, CaseIterable, Codable {
     case analysis = "analysis"
     case practice = "practice"
     
-    var displayName: String {
-        switch self {
-        case .support:
-            return "Поддержка"
-        case .analysis:
-            return "Анализ"
-        case .practice:
-            return "Практика"
+    func displayName(for language: Language) -> String {
+        switch language {
+        case .russian:
+            switch self {
+            case .support:
+                return "Поддержка"
+            case .analysis:
+                return "Анализ"
+            case .practice:
+                return "Практика"
+            }
+        case .english:
+            switch self {
+            case .support:
+                return "Support"
+            case .analysis:
+                return "Analysis"
+            case .practice:
+                return "Practice"
+            }
         }
     }
     
-    var description: String {
-        switch self {
-        case .support:
-            return "Эмпатичное слушание"
-        case .analysis:
-            return "Сократовский диалог"
-        case .practice:
-            return "КПТ техники"
+    func description(for language: Language) -> String {
+        switch language {
+        case .russian:
+            switch self {
+            case .support:
+                return "Эмпатичное слушание"
+            case .analysis:
+                return "Сократовский диалог"
+            case .practice:
+                return "КПТ техники"
+            }
+        case .english:
+            switch self {
+            case .support:
+                return "Empathetic listening"
+            case .analysis:
+                return "Socratic dialogue"
+            case .practice:
+                return "CBT techniques"
+            }
         }
     }
     

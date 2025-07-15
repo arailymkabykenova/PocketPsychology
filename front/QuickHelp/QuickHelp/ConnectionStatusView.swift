@@ -3,6 +3,7 @@ import SwiftUI
 struct ConnectionStatusView: View {
     let isConnected: Bool
     let onRetry: () -> Void
+    @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
         HStack(spacing: 12) {
@@ -14,7 +15,7 @@ struct ConnectionStatusView: View {
                 .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isConnected)
             
             // Status text
-            Text(isConnected ? "Подключено к серверу" : "Нет подключения к серверу")
+            Text(isConnected ? localizationManager.localizedString(.connectedToServer) : localizationManager.localizedString(.notConnectedToServer))
                 .font(.caption)
                 .foregroundColor(isConnected ? .green : .red)
             

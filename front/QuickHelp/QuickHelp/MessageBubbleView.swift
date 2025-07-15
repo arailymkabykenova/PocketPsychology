@@ -3,6 +3,7 @@ import SwiftUI
 struct MessageBubbleView: View {
     let message: ChatMessage
     @State private var isAppearing = false
+    @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -48,7 +49,7 @@ struct MessageBubbleView: View {
                     HStack(spacing: 4) {
                         Image(systemName: message.mode.icon)
                             .font(.caption2)
-                        Text(message.mode.displayName)
+                        Text(message.mode.displayName(for: localizationManager.currentLanguage))
                             .font(.caption2)
                             .fontWeight(.medium)
                     }
@@ -70,7 +71,8 @@ struct MessageBubbleView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
         .frame(maxWidth: UIScreen.main.bounds.width * 0.75, alignment: .leading)
     }
     

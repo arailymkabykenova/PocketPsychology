@@ -4,6 +4,7 @@ struct MessageInputView: View {
     @Binding var text: String
     let isLoading: Bool
     let onSend: () -> Void
+    @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @State private var isExpanded = false
     
@@ -13,7 +14,7 @@ struct MessageInputView: View {
             
             HStack(spacing: 12) {
                 // Text input
-                TextField("Введите сообщение...", text: $text, axis: .vertical)
+                TextField(localizationManager.localizedString(.enterMessage), text: $text, axis: .vertical)
                     .textFieldStyle(PlainTextFieldStyle())
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
