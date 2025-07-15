@@ -31,10 +31,11 @@ celery_app.conf.update(
 
 # Optional: Configure periodic tasks
 celery_app.conf.beat_schedule = {
-    "initialize-startup-content": {
-        "task": "tasks.initialize_startup_content",
-        "schedule": 60.0,  # Run once after 1 minute of startup
-    },
+    # Убираем автоматическую генерацию startup content
+    # "initialize-startup-content": {
+    #     "task": "tasks.initialize_startup_content",
+    #     "schedule": 60.0,  # Run once after 1 minute of startup
+    # },
     "generate-daily-content": {
         "task": "tasks.generate_daily_content",
         "schedule": 1800.0,  # Every 30 minutes

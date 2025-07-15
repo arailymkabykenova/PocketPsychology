@@ -4,7 +4,7 @@ import Foundation
 struct HomeView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     @StateObject private var contentService = ContentService()
-    @StateObject private var chatService = ChatService()
+    @ObservedObject var chatService: ChatService
     
     // Sync language between localization manager and content service
     private var currentLanguage: Language {
@@ -13,6 +13,8 @@ struct HomeView: View {
     
     var body: some View {
         NavigationStack {
+            let _ = print("🏠 HomeView: Rendering with topic='\(chatService.currentTopic ?? "nil")', articles=\(contentService.articles.count), videos=\(contentService.videos.count)")
+            
             ScrollView {
                 VStack(spacing: 24) {
                     // Welcome message for new users (only show if no topic yet)
@@ -64,10 +66,20 @@ struct HomeView: View {
                 contentService.setLanguage(newLanguage)
             }
             .onChange(of: chatService.currentTopic) { newTopic in
+                print("🏠 HomeView: Topic changed to '\(newTopic ?? "nil")'")
+                
                 // Refresh content when topic changes
                 if let topic = newTopic {
                     Task {
+                        print("🏠 HomeView: Starting to load content for topic '\(topic)'")
                         await contentService.loadContentForTopic(topic)
+                        print("🏠 HomeView: Finished loading content for topic '\(topic)'")
+                    }
+                } else {
+                    // If topic is cleared, load initial random content
+                    Task {
+                        print("🏠 HomeView: Loading initial random content")
+                        await contentService.fetchInitialContent()
                     }
                 }
             }
@@ -78,6 +90,22 @@ struct HomeView: View {
             } message: {
                 if let errorMessage = contentService.errorMessage {
                     Text(errorMessage)
+                }
+            }
+            .onAppear {
+                print("🏠 HomeView: onAppear called")
+                
+                // Load content if user has a topic
+                if let topic = chatService.currentTopic {
+                    print("🏠 HomeView: onAppear - Loading content for existing topic '\(topic)'")
+                    Task {
+                        await contentService.loadContentForTopic(topic)
+                    }
+                } else {
+                    print("🏠 HomeView: onAppear - No topic, loading initial random content")
+                    Task {
+                        await contentService.fetchInitialContent()
+                    }
                 }
             }
         }
@@ -93,14 +121,16 @@ struct PersonalizedContentSection: View {
     
     var body: some View {
         VStack(spacing: 24) {
+            let _ = print("🎯 PersonalizedContentSection: topic='\(topic)', articles=\(contentService.articles.count), videos=\(contentService.videos.count)")
+            
             // Quote of the day (personalized for topic)
-            QuoteOfTheDayCard(quote: contentService.dailyQuote, isLoading: contentService.isLoading, contentService: contentService)
+            QuoteOfTheDayCard(quote: contentService.dailyQuote, isLoading: contentService.isLoading && contentService.dailyQuote == nil, contentService: contentService)
             
             // Articles section (personalized for topic)
-            ArticlesSection(articles: contentService.articles, isLoading: contentService.isLoading, contentService: contentService)
+            ArticlesSection(articles: contentService.articles, isLoading: contentService.isLoading && contentService.articles.isEmpty, contentService: contentService)
             
             // Videos section (personalized for topic)
-            VideosSection(videos: contentService.videos, isLoading: contentService.isLoading)
+            VideosSection(videos: contentService.videos, isLoading: contentService.isLoading && contentService.videos.isEmpty)
         }
     }
 }
@@ -113,13 +143,13 @@ struct GeneralContentSection: View {
     var body: some View {
         VStack(spacing: 24) {
             // Quote of the day
-            QuoteOfTheDayCard(quote: contentService.dailyQuote, isLoading: contentService.isLoading, contentService: contentService)
+            QuoteOfTheDayCard(quote: contentService.dailyQuote, isLoading: contentService.isLoading && contentService.dailyQuote == nil, contentService: contentService)
             
             // Articles section
-            ArticlesSection(articles: contentService.articles, isLoading: contentService.isLoading, contentService: contentService)
+            ArticlesSection(articles: contentService.articles, isLoading: contentService.isLoading && contentService.articles.isEmpty, contentService: contentService)
             
             // Videos section
-            VideosSection(videos: contentService.videos, isLoading: contentService.isLoading)
+            VideosSection(videos: contentService.videos, isLoading: contentService.isLoading && contentService.videos.isEmpty)
         }
     }
 }
@@ -365,6 +395,8 @@ struct ArticlesSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            let _ = print("📄 ArticlesSection: articles.count=\(articles.count), isLoading=\(isLoading)")
+            
             // Section header
             HStack {
                 Text(localizationManager.localizedString(.selfHelpArticles))
@@ -507,6 +539,8 @@ struct VideosSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            let _ = print("🎥 VideosSection: videos.count=\(videos.count), isLoading=\(isLoading)")
+            
             // Section header
             HStack {
                 Text(localizationManager.currentLanguage == .russian ? "Мотивационные видео" : "Motivational Videos")
@@ -652,5 +686,5 @@ struct VideoCard: View {
 }
 
 #Preview {
-    HomeView()
+    HomeView(chatService: ChatService())
 } 

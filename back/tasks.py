@@ -112,28 +112,61 @@ def extract_topic_from_message(message: str, user_id: str = "default", language:
         # Update user's current topic in database
         db.update_user_current_topic(user_id, topic)
         
-        # AUTOMATIC CONTENT GENERATION - Generate content for the extracted topic
-        logger.info(f"Starting automatic content generation for topic '{topic}'")
+        # Check if this is user's first message (no previous topic)
+        previous_topic = db.get_user_current_topic(user_id)
+        is_first_message = previous_topic is None
         
-        # Generate article and quote asynchronously with language
-        article_task = generate_content_for_topic.delay(topic, "article", language)
-        quote_task = generate_content_for_topic.delay(topic, "quote", language)
-        
-        # Update user recommendations
-        recommendations_task = update_user_recommendations.delay(user_id, language)
-        
-        logger.info(f"Extracted topic '{topic}' for user {user_id} and started content generation")
-        
-        return {
-            "topic": topic,
-            "user_id": user_id,
-            "language": language,
-            "timestamp": datetime.now().isoformat(),
-            "article_task_id": article_task.id,
-            "quote_task_id": quote_task.id,
-            "recommendations_task_id": recommendations_task.id,
-            "auto_generation_started": True
-        }
+        # AUTOMATIC CONTENT GENERATION - Only for first message or topic change
+        if is_first_message:
+            logger.info(f"First message from user {user_id}, generating initial random content")
+            # Generate initial random content for new user
+            initial_content_task = generate_initial_random_content.delay()
+            recommendations_task = update_user_recommendations.delay(user_id, language)
+            
+            logger.info(f"Extracted topic '{topic}' for new user {user_id} and started initial content generation")
+            
+            return {
+                "topic": topic,
+                "user_id": user_id,
+                "language": language,
+                "timestamp": datetime.now().isoformat(),
+                "initial_content_task_id": initial_content_task.id,
+                "recommendations_task_id": recommendations_task.id,
+                "auto_generation_started": True,
+                "is_first_message": True
+            }
+        else:
+            # For existing users, only generate content if topic changed significantly
+            if previous_topic != topic:
+                logger.info(f"Topic changed for user {user_id}: '{previous_topic}' -> '{topic}', generating new content")
+                # Generate content for new topic
+                article_task = generate_content_for_topic.delay(topic, "article", language)
+                quote_task = generate_content_for_topic.delay(topic, "quote", language)
+                recommendations_task = update_user_recommendations.delay(user_id, language)
+                
+                return {
+                    "topic": topic,
+                    "user_id": user_id,
+                    "language": language,
+                    "timestamp": datetime.now().isoformat(),
+                    "article_task_id": article_task.id,
+                    "quote_task_id": quote_task.id,
+                    "recommendations_task_id": recommendations_task.id,
+                    "auto_generation_started": True,
+                    "topic_changed": True,
+                    "previous_topic": previous_topic
+                }
+            else:
+                # Same topic, no need to generate new content
+                logger.info(f"Same topic '{topic}' for user {user_id}, no content generation needed")
+                return {
+                    "topic": topic,
+                    "user_id": user_id,
+                    "language": language,
+                    "timestamp": datetime.now().isoformat(),
+                    "auto_generation_started": False,
+                    "topic_changed": False
+                }
         
     except Exception as e:
         logger.error(f"Error extracting topic: {e}")
@@ -435,9 +468,65 @@ def generate_content_for_all_topics() -> Dict:
         return {"error": str(e)}
 
 @celery_app.task
+def generate_initial_random_content() -> Dict:
+    """
+    Generate initial random content for new users (quotes, articles, videos)
+    This runs only once when user first sends a message
+    """
+    try:
+        # Import ContentGenerator here to avoid circular import
+        from content_generator import ContentGenerator
+        
+        if not ai_service:
+            raise Exception("AI service not available")
+        
+        content_generator = ContentGenerator(db, ai_service)
+        
+        # Initialize default quotes if database is empty
+        if not db.get_quotes(limit=1):
+            db.populate_default_quotes()
+            logger.info("Initialized default quotes")
+        
+        # Generate initial articles for common psychological topics
+        common_topics = ["стресс", "тревога", "мотивация", "уверенность", "отношения", "здоровье"]
+        
+        generated_articles = []
+        for topic in common_topics:
+            try:
+                article = content_generator._generate_article({"topic": topic, "frequency": 1})
+                if article:
+                    generated_articles.append(article)
+                    logger.info(f"Generated initial article for topic: {topic}")
+            except Exception as e:
+                logger.error(f"Error generating initial article for {topic}: {e}")
+        
+        # Cache initial content
+        initial_content = {
+            "articles": generated_articles,
+            "topics_processed": common_topics,
+            "initialized_at": datetime.now().isoformat()
+        }
+        
+        cache_key = "initial_content"
+        redis_client.setex(cache_key, 86400, json.dumps(initial_content))  # Cache for 24 hours
+        
+        logger.info(f"Generated initial random content: {len(generated_articles)} articles for {len(common_topics)} topics")
+        
+        return {
+            "articles_generated": len(generated_articles),
+            "topics_processed": len(common_topics),
+            "cached": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating initial random content: {e}")
+        return {"error": str(e)}
+
+@celery_app.task
 def initialize_startup_content() -> Dict:
     """
     Initialize startup content for new users (quotes, articles, videos)
+    DEPRECATED: Use generate_initial_random_content instead
     """
     try:
         # Import ContentGenerator here to avoid circular import
@@ -520,6 +609,14 @@ def get_cached_recommendations(user_id: str) -> Optional[Dict]:
 def get_cached_daily_content() -> Optional[Dict]:
     """Get cached daily content"""
     cache_key = f"daily_content:{datetime.now().strftime('%Y%m%d')}"
+    data = redis_client.get(cache_key)
+    if data:
+        return json.loads(data)
+    return None
+
+def get_initial_random_content() -> Optional[Dict]:
+    """Get cached initial random content for new users"""
+    cache_key = "initial_content"
     data = redis_client.get(cache_key)
     if data:
         return json.loads(data)

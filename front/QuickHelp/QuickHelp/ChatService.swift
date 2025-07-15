@@ -30,9 +30,11 @@ class ChatService: ObservableObject {
         // Generate or load user ID
         if let savedUserId = userDefaults.string(forKey: userIdKey) {
             self.currentUserId = savedUserId
+            print("🔄 ChatService: Loaded existing user_id: '\(currentUserId)'")
         } else {
             self.currentUserId = UUID().uuidString
             userDefaults.set(self.currentUserId, forKey: userIdKey)
+            print("🆕 ChatService: Generated new user_id: '\(currentUserId)'")
         }
         
         // Load current topic
@@ -58,7 +60,7 @@ class ChatService: ObservableObject {
         let oldTopic = self.currentTopic
         self.currentTopic = topic
         userDefaults.set(topic, forKey: currentTopicKey)
-        print("Topic updated: '\(oldTopic ?? "nil")' -> '\(topic ?? "nil")'")
+        print("💬 ChatService: Topic updated: '\(oldTopic ?? "nil")' -> '\(topic ?? "nil")'")
     }
     
     func updateCurrentLanguage(_ language: Language) {
@@ -166,6 +168,11 @@ class ChatService: ObservableObject {
     // MARK: - Chat API
     
     func sendMessage(_ message: String, mode: ChatMode) async -> String? {
+        print("🚀 ChatService: Sending message with user_id: '\(currentUserId)'")
+        print("📝 Message: '\(message)'")
+        print("🎯 Mode: \(mode.rawValue)")
+        print("🌍 Language: \(currentLanguage.rawValue)")
+        
         await MainActor.run {
             isLoading = true
             errorMessage = nil
@@ -195,6 +202,10 @@ class ChatService: ObservableObject {
             
             if httpResponse.statusCode == 200 {
                 let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
+                
+                print("✅ ChatService: Received response for user_id: '\(currentUserId)'")
+                print("📊 Response topic: '\(chatResponse.topic ?? "nil")'")
+                print("🆔 Topic task ID: '\(chatResponse.topic_task_id ?? "nil")'")
                 
                 // Update current topic if provided
                 if let topic = chatResponse.topic {
@@ -309,6 +320,7 @@ class ChatService: ObservableObject {
     }
     
     func fetchUserTopic() async -> String? {
+        print("🔍 ChatService: Fetching topic for user_id: '\(currentUserId)'")
         do {
             let url = URL(string: "\(baseURL)/user/\(currentUserId)/topic")!
             let (data, response) = try await URLSession.shared.data(from: url)
@@ -319,6 +331,7 @@ class ChatService: ObservableObject {
             }
             
             let userTopic = try JSONDecoder().decode(UserTopic.self, from: data)
+            print("📊 ChatService: Fetched topic for user_id '\(currentUserId)': '\(userTopic.topic ?? "nil")'")
             return userTopic.topic
             
         } catch {

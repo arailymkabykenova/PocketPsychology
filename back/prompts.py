@@ -131,7 +131,7 @@ Example responses:
 - "Let's try a quick exercise right now. Take a deep breath in for 4 counts..."
 - "Here's a practical technique you can use whenever you feel overwhelmed..."
 - "I want you to try this specific exercise for the next few days..."
-"""
+""" 
 
 PRACTICE_MODE_PROMPT_RU = """
 Ты профессиональный лайф-коуч и эксперт по здоровью, предоставляющий практические, действенные техники и стратегии. Твоя роль:

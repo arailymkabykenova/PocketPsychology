@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from models import ChatRequest, ChatResponse, ChatMode, TopicExtractionRequest, TopicExtractionResponse, TaskStatusResponse
 from ai_service import AIService
 from content_generator import ContentGenerator
-from tasks import get_cached_topic, get_cached_recommendations, get_cached_daily_content
+from tasks import get_cached_topic, get_cached_recommendations, get_cached_daily_content, get_initial_random_content
 from celery_app import celery_app
 
 # Load environment variables
@@ -320,53 +320,40 @@ async def generate_content(content_type: str = "article", topic: Optional[str] =
 
 @app.get("/content/initial")
 async def get_initial_content(language: str = "ru"):
-    """Get initial content for new users: daily quote + random videos and articles"""
+    """Get initial random content for new users"""
     try:
-        if content_generator is None:
-            raise HTTPException(status_code=500, detail="Content generator not available")
+        # Get initial random content from cache
+        initial_content = get_initial_random_content()
+        
+        if not initial_content:
+            # If no initial content exists, return empty content
+            return {
+                "daily_quote": None,
+                "random_articles": [],
+                "random_videos": [],
+                "language": language,
+                "is_initial": True
+            }
         
         # Get daily quote
-        daily_quote = content_generator.db.get_daily_quote(language=language)
+        daily_quote = None
+        if content_generator:
+            daily_quote = content_generator.get_daily_quote(language)
         
-        # Try to get cached initial content first
-        import redis
-        import json
-        
-        redis_client = redis.Redis.from_url(
-            os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-            decode_responses=True
-        )
-        
-        cached_content = redis_client.get(f"initial_content:{language}")
-        if cached_content:
-            initial_content = json.loads(cached_content)
-            random_articles = initial_content.get("articles", [])
-        else:
-            # Fallback to database articles
-            random_articles = content_generator.db.get_generated_content("article", limit=3)
-        
-        # Get random videos on psychological topics based on language
-        if language == "en":
-            psychological_topics = ["psychology", "motivation", "stress", "anxiety", "confidence", "relationships"]
-            welcome_message = "Welcome! Start a conversation and we'll pick personalized recommendations for you."
-        else:
-            psychological_topics = ["психология", "мотивация", "стресс", "тревога", "уверенность", "отношения"]
-            welcome_message = "Добро пожаловать! Начните беседу, и мы подберем для вас персонализированные рекомендации."
-        
-        import random
-        random_topic = random.choice(psychological_topics)
-        random_videos = content_generator.youtube_service.search_videos(random_topic, 3, language=language)
+        # Get random videos (placeholder for now)
+        random_videos = []
         
         return {
             "daily_quote": daily_quote,
-            "random_articles": random_articles[:3],  # Limit to 3 articles
+            "random_articles": initial_content.get("articles", []),
             "random_videos": random_videos,
-            "welcome_message": welcome_message
+            "language": language,
+            "is_initial": True
         }
         
     except Exception as e:
-        logger.error(f"Error getting initial content: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error getting initial content: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get initial content")
 
 
 

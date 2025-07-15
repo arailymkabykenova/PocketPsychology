@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ChatView: View {
-    @StateObject private var chatService = ChatService()
+    @ObservedObject var chatService: ChatService
     @StateObject private var localizationManager = LocalizationManager.shared
     @State private var messages: [ChatMessage] = []
     @State private var inputText = ""

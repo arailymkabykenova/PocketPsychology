@@ -3,7 +3,7 @@ import Combine
 
 class ContentService: ObservableObject {
     // Backend URL - same as ChatService
-    private let baseURL = "http://10.68.96.57:8000"
+    private let baseURL = "http://192.168.0.102:8000"
     
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -44,6 +44,9 @@ class ContentService: ObservableObject {
     // MARK: - Topic-Based Content Loading
     
     func loadContentForTopic(_ topic: String) async {
+        print("🔄 ContentService: Loading content for topic: '\(topic)'")
+        print("🌐 ContentService: Using baseURL: '\(baseURL)'")
+        
         await MainActor.run {
             isLoading = true
             errorMessage = nil
@@ -51,13 +54,24 @@ class ContentService: ObservableObject {
         
         // Load articles, videos, and quote for the specific topic
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.fetchArticles(topic: topic) }
-            group.addTask { await self.fetchVideos(topic: topic) }
-            group.addTask { await self.fetchDailyQuote() }
+            group.addTask { 
+                print("📄 ContentService: Fetching articles for topic: '\(topic)'")
+                await self.fetchArticles(topic: topic) 
+            }
+            group.addTask { 
+                print("🎥 ContentService: Fetching videos for topic: '\(topic)'")
+                await self.fetchVideos(topic: topic) 
+            }
+            group.addTask { 
+                print("💬 ContentService: Fetching daily quote")
+                await self.fetchDailyQuote() 
+            }
         }
         
         await MainActor.run {
             isLoading = false
+            print("✅ ContentService: Content loading completed for topic: '\(topic)'")
+            print("📊 ContentService: Articles: \(self.articles.count), Videos: \(self.videos.count), Quote: \(self.dailyQuote != nil ? "loaded" : "none")")
         }
     }
     
@@ -178,6 +192,8 @@ class ContentService: ObservableObject {
     // MARK: - Topic-Based Content
     
     func fetchArticles(topic: String? = nil) async {
+        print("📄 ContentService: fetchArticles called with topic: '\(topic ?? "nil")'")
+        
         await MainActor.run {
             isLoading = true
             errorMessage = nil
@@ -213,6 +229,7 @@ class ContentService: ObservableObject {
             await MainActor.run {
                 self.articles = articlesResponse.articles
                 self.isLoading = false
+                print("📄 ContentService: Articles loaded: \(articlesResponse.articles.count) articles")
             }
             
         } catch {
@@ -425,6 +442,8 @@ class ContentService: ObservableObject {
     // MARK: - Videos
     
     func fetchVideos(topic: String? = nil, limit: Int = 10) async {
+        print("🎥 ContentService: fetchVideos called with topic: '\(topic ?? "nil")'")
+        
         await MainActor.run {
             isLoading = true
             errorMessage = nil
@@ -445,7 +464,7 @@ class ContentService: ObservableObject {
                 return
             }
             
-            print("Fetching videos from: \(url)")
+            print("🎥 ContentService: Fetching videos from: \(url)")
             
             let (data, response) = try await URLSession.shared.data(from: url)
             
@@ -476,11 +495,11 @@ class ContentService: ObservableObject {
             await MainActor.run {
                 self.videos = videosResponse.videos
                 self.isLoading = false
-                print("Successfully loaded \(videosResponse.videos.count) videos")
+                print("🎥 ContentService: Successfully loaded \(videosResponse.videos.count) videos")
                 
                 // Debug: print first video structure
                 if let firstVideo = videosResponse.videos.first {
-                    print("First video structure: \(firstVideo)")
+                    print("🎥 ContentService: First video structure: \(firstVideo)")
                 }
             }
             

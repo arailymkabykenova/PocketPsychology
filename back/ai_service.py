@@ -179,8 +179,9 @@ class AIService:
             # Update user recommendations asynchronously with detected language
             recommendations_task = update_user_recommendations.delay(user_id, final_language)
             
-            # Don't return cached topic - let the task extract new topic for each message
-            cached_topic = None
+            # Get cached topic if available, otherwise return None (will be updated by task)
+            cached_topic = get_cached_topic(user_id)
+            logger.info(f"Retrieved cached topic for user {user_id}: '{cached_topic}'")
             
             return {
                 "response": ai_response,
