@@ -50,6 +50,7 @@ enum LocalizationKey {
     case motivationalVideos
     case all
     case quoteOfTheDay
+
     
     var russian: String {
         switch self {

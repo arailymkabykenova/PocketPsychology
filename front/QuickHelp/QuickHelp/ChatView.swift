@@ -28,7 +28,7 @@ struct ChatView: View {
                     
                     Spacer()
                     
-                    Text(localizationManager.currentLanguage == .russian ? "Чат" : "Chat")
+                    Text(localizationManager.localizedString(.chat))
                         .font(.title2)
                         .fontWeight(.semibold)
                     
@@ -125,6 +125,16 @@ struct ChatView: View {
                 }
                 
                 Spacer()
+                
+                // Content generation indicator
+                if chatService.isGeneratingContent {
+                    contentGenerationIndicator
+                }
+                
+                // Current topic indicator with refresh button
+                if let currentTopic = chatService.currentTopic {
+                    currentTopicIndicator(topic: currentTopic)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -135,6 +145,7 @@ struct ChatView: View {
                 isLoading: chatService.isLoading,
                 onSend: sendMessage
             )
+            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .sheet(isPresented: $showingModeSelector) {
             ModeSelectorView(selectedMode: $selectedMode, selectedLanguage: selectedLanguage)
@@ -165,6 +176,7 @@ struct ChatView: View {
         }
         .onChange(of: selectedLanguage) { newLanguage in
             localizationManager.setLanguage(newLanguage)
+            chatService.updateCurrentLanguage(newLanguage)
         }
         .alert(localizationManager.localizedString(.clearHistoryAlert), isPresented: $showingClearHistoryAlert) {
             Button(localizationManager.localizedString(.cancel), role: .cancel) { }
@@ -261,6 +273,48 @@ struct ChatView: View {
         Task {
             await chatService.clearServerHistory()
         }
+    }
+    
+
+    
+    // MARK: - Computed Properties
+    
+    private var contentGenerationIndicator: some View {
+        HStack(spacing: 6) {
+            ProgressView()
+                .scaleEffect(0.6)
+                .foregroundColor(.blue)
+            
+            Text(localizationManager.currentLanguage == .russian ? 
+                "Анализ..." : "Analyzing...")
+                .font(.caption)
+                .foregroundColor(.blue)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(Color.blue.opacity(0.1))
+        )
+    }
+    
+    private func currentTopicIndicator(topic: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "lightbulb.fill")
+                .font(.caption)
+                .foregroundColor(.yellow)
+            
+            Text(topic.capitalized)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(Color.yellow.opacity(0.1))
+        )
     }
 }
 

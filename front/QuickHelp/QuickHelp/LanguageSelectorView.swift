@@ -6,7 +6,7 @@ struct LanguageSelectorView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 8) {
@@ -40,7 +40,7 @@ struct LanguageSelectorView: View {
                 Spacer()
             }
             .padding(.horizontal, 20)
-            .navigationBarTitleDisplayMode(.inline)
+
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(localizationManager.localizedString(.done)) {

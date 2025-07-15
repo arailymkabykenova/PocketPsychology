@@ -4,22 +4,66 @@ import Combine
 class ChatService: ObservableObject {
     // Backend URL - change this to your actual backend URL
    //private let baseURL = "http://localhost:8000"
-    private let baseURL = "http://10.68.96.57:8000"
+    private let baseURL = "http://192.168.0.102:8000"
     
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var isConnected = false
     
+    // User management
+    @Published var currentUserId: String = ""
+    @Published var currentTopic: String?
+    @Published var isGeneratingContent = false
+    
+    // Language support
+    @Published var currentLanguage: Language = .russian
+    
     // UserDefaults keys
     private let userDefaults = UserDefaults.standard
     private let chatHistoryKey = "chat_history"
     private let modeHistoryKey = "mode_history"
+    private let userIdKey = "user_id"
+    private let currentTopicKey = "current_topic"
+    private let languageKey = "chat_language"
     
     init() {
-        // Test connection on init
-        Task {
-            await testConnection()
+        // Generate or load user ID
+        if let savedUserId = userDefaults.string(forKey: userIdKey) {
+            self.currentUserId = savedUserId
+        } else {
+            self.currentUserId = UUID().uuidString
+            userDefaults.set(self.currentUserId, forKey: userIdKey)
         }
+        
+        // Load current topic
+        self.currentTopic = userDefaults.string(forKey: currentTopicKey)
+        
+        // Load current language
+        if let savedLanguage = userDefaults.string(forKey: languageKey),
+           let language = Language(rawValue: savedLanguage) {
+            self.currentLanguage = language
+        }
+        
+        // Test connection on init
+        DispatchQueue.main.async {
+            Task {
+                await self.testConnection()
+            }
+        }
+    }
+    
+    // MARK: - User Management
+    
+    func updateCurrentTopic(_ topic: String?) {
+        let oldTopic = self.currentTopic
+        self.currentTopic = topic
+        userDefaults.set(topic, forKey: currentTopicKey)
+        print("Topic updated: '\(oldTopic ?? "nil")' -> '\(topic ?? "nil")'")
+    }
+    
+    func updateCurrentLanguage(_ language: Language) {
+        self.currentLanguage = language
+        userDefaults.set(language.rawValue, forKey: languageKey)
     }
     
     // MARK: - Chat History Management
@@ -50,6 +94,8 @@ class ChatService: ObservableObject {
     func clearChatHistory() {
         userDefaults.removeObject(forKey: chatHistoryKey)
         userDefaults.removeObject(forKey: modeHistoryKey)
+        userDefaults.removeObject(forKey: currentTopicKey)
+        currentTopic = nil
     }
     
     func clearServerHistory(mode: ChatMode? = nil) async {
@@ -89,6 +135,8 @@ class ChatService: ObservableObject {
         return mode
     }
     
+    // MARK: - Connection Management
+    
     func testConnection() async {
         do {
             let url = URL(string: "\(baseURL)/health")!
@@ -115,6 +163,8 @@ class ChatService: ObservableObject {
         await testConnection()
     }
     
+    // MARK: - Chat API
+    
     func sendMessage(_ message: String, mode: ChatMode) async -> String? {
         await MainActor.run {
             isLoading = true
@@ -122,7 +172,7 @@ class ChatService: ObservableObject {
         }
         
         do {
-            let request = ChatRequest(message: message, mode: mode)
+            let request = ChatRequest(message: message, mode: mode, user_id: currentUserId, language: currentLanguage.rawValue)
             let url = URL(string: "\(baseURL)/chat")!
             
             var urlRequest = URLRequest(url: url)
@@ -145,6 +195,21 @@ class ChatService: ObservableObject {
             
             if httpResponse.statusCode == 200 {
                 let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
+                
+                // Update current topic if provided
+                if let topic = chatResponse.topic {
+                    await MainActor.run {
+                        self.updateCurrentTopic(topic)
+                    }
+                }
+                
+                // Start monitoring content generation if tasks are provided
+                if let topicTaskId = chatResponse.topic_task_id {
+                    Task {
+                        await monitorContentGeneration(topicTaskId: topicTaskId)
+                    }
+                }
+                
                 return chatResponse.response
             } else {
                 let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
@@ -162,4 +227,105 @@ class ChatService: ObservableObject {
             return nil
         }
     }
+    
+    // MARK: - Content Generation Monitoring
+    
+    private func monitorContentGeneration(topicTaskId: String) async {
+        await MainActor.run {
+            isGeneratingContent = true
+        }
+        
+        // Poll task status every 1 second for up to 10 seconds
+        for _ in 0..<10 {
+            do {
+                let url = URL(string: "\(baseURL)/task/\(topicTaskId)/status")!
+                let (data, response) = try await URLSession.shared.data(from: url)
+                
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode == 200 {
+                    let taskStatus = try JSONDecoder().decode(TaskStatus.self, from: data)
+                    
+                    if taskStatus.status == "completed" {
+                        // Task completed successfully
+                        if let result = taskStatus.result,
+                           let topic = result.topic {
+                            await MainActor.run {
+                                self.updateCurrentTopic(topic)
+                                self.isGeneratingContent = false
+                            }
+                            print("Topic extracted successfully: '\(topic)'")
+                        } else {
+                            await MainActor.run {
+                                self.isGeneratingContent = false
+                            }
+                            print("Task completed but no topic found")
+                        }
+                        return
+                    } else if taskStatus.status == "failed" {
+                        // Task failed
+                        await MainActor.run {
+                            self.isGeneratingContent = false
+                        }
+                        print("Topic extraction failed")
+                        return
+                    }
+                }
+            } catch {
+                print("Error monitoring task: \(error)")
+            }
+            
+            // Wait 1 second before next poll
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+        
+        // Timeout
+        await MainActor.run {
+            isGeneratingContent = false
+        }
+        print("Topic extraction timed out")
+    }
+    
+
+    
+    // MARK: - User Recommendations
+    
+    func fetchUserRecommendations() async -> UserRecommendations? {
+        do {
+            let url = URL(string: "\(baseURL)/user/\(currentUserId)/recommendations")!
+            let (data, response) = try await URLSession.shared.data(from: url)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                return nil
+            }
+            
+            let recommendations = try JSONDecoder().decode(UserRecommendations.self, from: data)
+            return recommendations
+            
+        } catch {
+            print("Error fetching user recommendations: \(error)")
+            return nil
+        }
+    }
+    
+    func fetchUserTopic() async -> String? {
+        do {
+            let url = URL(string: "\(baseURL)/user/\(currentUserId)/topic")!
+            let (data, response) = try await URLSession.shared.data(from: url)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                return nil
+            }
+            
+            let userTopic = try JSONDecoder().decode(UserTopic.self, from: data)
+            return userTopic.topic
+            
+        } catch {
+            print("Error fetching user topic: \(error)")
+            return nil
+        }
+    }
+    
+
 } 

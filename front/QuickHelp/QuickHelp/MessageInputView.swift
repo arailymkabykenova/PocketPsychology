@@ -29,6 +29,11 @@ struct MessageInputView: View {
                             isExpanded = newValue.count > 0
                         }
                     }
+                    .onSubmit {
+                        if canSend {
+                            onSend()
+                        }
+                    }
                 
                 // Send button
                 Button(action: {
@@ -48,6 +53,9 @@ struct MessageInputView: View {
             .padding(.vertical, 12)
         }
         .background(Color(.systemBackground))
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 0)
+        }
     }
     
     private var canSend: Bool {

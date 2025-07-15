@@ -7,7 +7,7 @@ struct ModeSelectorView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 8) {
@@ -16,48 +16,45 @@ struct ModeSelectorView: View {
                         .fontWeight(.semibold)
                     
                     Text(localizationManager.localizedString(.selectModeSubtitle))
-                        .font(.body)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top)
+                .padding(.top, 16)
                 
-                // Mode cards
+                // Mode options
                 VStack(spacing: 16) {
                     ForEach(ChatMode.allCases, id: \.self) { mode in
-                        ModeCardView(
+                        ModeOptionCard(
                             mode: mode,
-                            selectedLanguage: selectedLanguage,
-                            isSelected: selectedMode == mode
+                            isSelected: selectedMode == mode,
+                            language: selectedLanguage
                         ) {
-                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                                selectedMode = mode
-                            }
+                            selectedMode = mode
                             dismiss()
                         }
                     }
                 }
+                .padding(.horizontal, 16)
                 
                 Spacer()
             }
-            .padding(.horizontal, 20)
-            .navigationBarTitleDisplayMode(.inline)
+
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(localizationManager.localizedString(.done)) {
                         dismiss()
                     }
-                    .fontWeight(.medium)
                 }
             }
         }
     }
 }
 
-struct ModeCardView: View {
+struct ModeOptionCard: View {
     let mode: ChatMode
-    let selectedLanguage: Language
     let isSelected: Bool
+    let language: Language
     let onTap: () -> Void
     
     var body: some View {
@@ -65,24 +62,24 @@ struct ModeCardView: View {
             HStack(spacing: 16) {
                 // Icon
                 Image(systemName: mode.icon)
-                    .font(.system(size: 24, weight: .medium))
-                    .foregroundColor(Color(mode.color))
-                    .frame(width: 48, height: 48)
+                    .font(.title2)
+                    .foregroundColor(isSelected ? .white : mode.color)
+                    .frame(width: 40, height: 40)
                     .background(
                         Circle()
-                            .fill(Color(mode.color).opacity(0.1))
+                            .fill(isSelected ? mode.color : mode.color.opacity(0.1))
                     )
                 
                 // Content
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(mode.displayName(for: selectedLanguage))
+                    Text(mode.displayName(for: language))
                         .font(.headline)
                         .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(isSelected ? .white : .primary)
                     
-                    Text(mode.description(for: selectedLanguage))
+                    Text(mode.description(for: language))
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
                         .multilineTextAlignment(.leading)
                 }
                 
@@ -92,26 +89,23 @@ struct ModeCardView: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(Color(mode.color))
-                        .transition(.scale.combined(with: .opacity))
+                        .foregroundColor(.white)
                 }
             }
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? Color(mode.color).opacity(0.1) : Color(.systemGray6))
+                    .fill(isSelected ? mode.color : Color(.systemBackground))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(isSelected ? Color(mode.color) : Color.clear, lineWidth: 2)
+                            .stroke(isSelected ? mode.color : Color.gray.opacity(0.2), lineWidth: 1)
                     )
             )
         }
         .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: isSelected)
     }
 }
 
 #Preview {
     ModeSelectorView(selectedMode: .constant(.support), selectedLanguage: .russian)
-} 
+}
