@@ -1,12 +1,18 @@
 import logging
+import sys
+import os
 from typing import List, Dict, Optional
 from celery_app import celery_app
 from ai_service import AIService
 from database import Database
 import redis
 import json
-import os
 from datetime import datetime, timedelta
+
+# Add current directory to Python path for Celery workers
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +20,14 @@ logger = logging.getLogger(__name__)
 try:
     ai_service = AIService()
     db = Database()
-    # Move ContentGenerator import inside functions to avoid circular import
+    # Import ContentGenerator here to ensure it's available
+    from content_generator import ContentGenerator
+    content_generator = ContentGenerator(db, ai_service)
 except Exception as e:
     logger.error(f"Failed to initialize services: {e}")
     ai_service = None
     db = None
+    content_generator = None
 
 # Redis client for caching
 redis_client = redis.Redis.from_url(
@@ -109,12 +118,16 @@ def extract_topic_from_message(message: str, user_id: str = "default", language:
         redis_client.setex(cache_key, 60, topic)  # Cache for 1 minute
         logger.info(f"Cached topic for user {user_id}: '{topic}'")
         
-        # Update user's current topic in database
-        db.update_user_current_topic(user_id, topic)
-        
         # Check if this is user's first message (no previous topic)
         previous_topic = db.get_user_current_topic(user_id)
         is_first_message = previous_topic is None
+        
+        # Update user's current topic in database
+        db.update_user_current_topic(user_id, topic)
+        logger.info(f"Updated current topic '{topic}' for user {user_id}")
+        
+        # Check if topic changed (compare with previous topic from database)
+        topic_changed = previous_topic != topic if previous_topic else True
         
         # AUTOMATIC CONTENT GENERATION - Only for first message or topic change
         if is_first_message:
@@ -137,7 +150,7 @@ def extract_topic_from_message(message: str, user_id: str = "default", language:
             }
         else:
             # For existing users, only generate content if topic changed significantly
-            if previous_topic != topic:
+            if topic_changed:
                 logger.info(f"Topic changed for user {user_id}: '{previous_topic}' -> '{topic}', generating new content")
                 # Generate content for new topic
                 article_task = generate_content_for_topic.delay(topic, "article", language)
@@ -178,13 +191,8 @@ def generate_content_for_topic(topic: str, content_type: str = "article", langua
     Generate content (article or quote) for specific topic
     """
     try:
-        # Import ContentGenerator here to avoid circular import
-        from content_generator import ContentGenerator
-        
-        if not ai_service:
-            raise Exception("AI service not available")
-        
-        content_generator = ContentGenerator(db, ai_service)
+        if not ai_service or not content_generator:
+            raise Exception("AI service or content generator not available")
         
         if content_type == "article":
             # Generate article for topic
@@ -233,13 +241,8 @@ def update_user_recommendations(user_id: str, language: str = "ru") -> Dict:
     Update user's personalized content recommendations
     """
     try:
-        # Import ContentGenerator here to avoid circular import
-        from content_generator import ContentGenerator
-        
-        if not ai_service:
-            raise Exception("AI service not available")
-        
-        content_generator = ContentGenerator(db, ai_service)
+        if not ai_service or not content_generator:
+            raise Exception("AI service or content generator not available")
         
         # Get user's current topic
         current_topic = db.get_user_current_topic(user_id)
@@ -285,13 +288,8 @@ def generate_daily_content(self) -> Dict:
     Generate daily content (quotes, articles) based on popular topics
     """
     try:
-        # Import ContentGenerator here to avoid circular import
-        from content_generator import ContentGenerator
-        
-        if not ai_service:
-            raise Exception("AI service not available")
-        
-        content_generator = ContentGenerator(db, ai_service)
+        if not ai_service or not content_generator:
+            raise Exception("AI service or content generator not available")
         
         # Get popular topics from database
         popular_topics = db.get_popular_topics(limit=5)
@@ -401,13 +399,8 @@ def generate_content_for_all_topics() -> Dict:
     Generate content for all active topics in the system
     """
     try:
-        # Import ContentGenerator here to avoid circular import
-        from content_generator import ContentGenerator
-        
-        if not ai_service:
-            raise Exception("AI service not available")
-        
-        content_generator = ContentGenerator(db, ai_service)
+        if not ai_service or not content_generator:
+            raise Exception("AI service or content generator not available")
         
         # Get all active topics from database
         all_topics = db.get_all_topics()

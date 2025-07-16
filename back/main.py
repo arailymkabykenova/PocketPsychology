@@ -106,17 +106,48 @@ async def chat(request: ChatRequest):
 @app.get("/health")
 async def health_check():
     """Detailed health check endpoint"""
-    return {
-        "status": "healthy",
-        "ai_service": "available" if ai_service else "unavailable",
-        "celery": "available" if celery_app else "unavailable",
-        "environment": {
-            "azure_endpoint": bool(os.getenv("AZURE_OPENAI_ENDPOINT")),
-            "azure_api_key": bool(os.getenv("AZURE_OPENAI_API_KEY")),
-            "deployment_name": bool(os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")),
-            "redis_url": bool(os.getenv("REDIS_URL"))
+    try:
+        # Test Redis connection and write/read
+        from tasks import redis_client
+        redis_status = "unavailable"
+        redis_test = "not tested"
+        
+        try:
+            redis_client.ping()
+            redis_status = "available"
+            
+            # Test Redis write/read
+            test_key = "health_test"
+            test_value = "test_data"
+            redis_client.setex(test_key, 60, test_value)
+            retrieved_value = redis_client.get(test_key)
+            if retrieved_value == test_value:
+                redis_test = "write/read OK"
+            else:
+                redis_test = f"write/read failed: expected '{test_value}', got '{retrieved_value}'"
+            redis_client.delete(test_key)
+            
+        except Exception as e:
+            redis_status = f"error: {str(e)}"
+            redis_test = "failed"
+        
+        return {
+            "status": "healthy",
+            "ai_service": "available" if ai_service else "unavailable",
+            "celery": "available" if celery_app else "unavailable",
+            "redis": {
+                "status": redis_status,
+                "test": redis_test
+            },
+            "environment": {
+                "azure_endpoint": bool(os.getenv("AZURE_OPENAI_ENDPOINT")),
+                "azure_api_key": bool(os.getenv("AZURE_OPENAI_API_KEY")),
+                "deployment_name": bool(os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")),
+                "redis_url": bool(os.getenv("REDIS_URL"))
+            }
         }
-    }
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
 
 
 @app.post("/clear-history")
@@ -208,12 +239,49 @@ async def get_user_recommendations(user_id: str):
 
 
 @app.get("/content/daily-quote")
-async def get_daily_quote(language: str = "ru"):
-    """Get daily motivational quote"""
+async def get_daily_quote(language: str = "ru", topic: Optional[str] = None):
+    """Get daily motivational quote, optionally personalized for topic"""
     try:
         if content_generator is None:
             raise HTTPException(status_code=500, detail="Content generator not available")
         
+        if topic:
+            # Try to get cached quote for topic
+            from tasks import redis_client
+            import json
+            from datetime import datetime
+            
+            cache_key = f"quote:{topic}:{language}:{datetime.now().strftime('%Y%m%d')}"
+            logger.info(f"Looking for cached quote with key: '{cache_key}'")
+            cached_data = redis_client.get(cache_key)
+            
+            if cached_data:
+                quote = json.loads(cached_data)
+                logger.info(f"Found cached quote for topic '{topic}': {quote.get('text', '')[:50]}...")
+                return quote
+            else:
+                logger.info(f"No cached quote found for topic '{topic}', generating new one")
+                # Generate new quote for topic
+                quote = content_generator._generate_quote(topic, language=language)
+                if quote:
+                    # Cache the quote
+                    try:
+                        quote_json = json.dumps(quote)
+                        redis_client.setex(cache_key, 86400, quote_json)  # Cache for 24 hours
+                        logger.info(f"Successfully cached quote for topic '{topic}' with key '{cache_key}': {quote.get('text', '')[:50]}...")
+                    except Exception as cache_error:
+                        logger.error(f"Failed to cache quote for topic '{topic}': {cache_error}")
+                        logger.error(f"Redis error details: {cache_error}")
+                    return quote
+                else:
+                    logger.error(f"Failed to generate quote for topic '{topic}'")
+                    # Fallback to general daily quote
+                    logger.info(f"Falling back to general daily quote for language '{language}'")
+                    quote = content_generator.get_daily_quote(language=language)
+                    return quote
+        
+        # Fallback to general daily quote
+        logger.info(f"Falling back to general daily quote for language '{language}'")
         quote = content_generator.get_daily_quote(language=language)
         return quote
         
@@ -229,6 +297,8 @@ async def get_articles(limit: int = 10, topic: Optional[str] = None, language: s
         if content_generator is None:
             raise HTTPException(status_code=500, detail="Content generator not available")
         
+        logger.info(f"Getting articles - topic: '{topic}', language: '{language}', limit: {limit}")
+        
         if topic:
             # Get cached articles for topic
             from tasks import redis_client
@@ -240,10 +310,56 @@ async def get_articles(limit: int = 10, topic: Optional[str] = None, language: s
             
             if cached_data:
                 article = json.loads(cached_data)
+                logger.info(f"Found cached article for topic '{topic}'")
                 return {"articles": [article]}
+            else:
+                logger.info(f"No cached article found for topic '{topic}', generating new one")
+                # Generate new article for topic
+                topic_dict = {"topic": topic, "frequency": 1}
+                article = content_generator._generate_article(topic_dict, language=language)
+                if article:
+                    # Cache the article
+                    try:
+                        article_json = json.dumps(article)
+                        logger.info(f"Attempting to cache article JSON: {article_json[:100]}...")
+                        redis_client.setex(cache_key, 86400, article_json)  # Cache for 24 hours
+                        logger.info(f"Successfully cached article for topic '{topic}' with key '{cache_key}'")
+                        
+                        # Verify cache
+                        verify_data = redis_client.get(cache_key)
+                        if verify_data:
+                            logger.info(f"Cache verification successful for key '{cache_key}'")
+                        else:
+                            logger.error(f"Cache verification failed for key '{cache_key}' - got None")
+                        
+                        # Also save to database for fallback
+                        try:
+                            ai_service.db.save_generated_content(
+                                content_type="article",
+                                title=article["title"],
+                                content=article["content"],
+                                source_topics=[topic]
+                            )
+                            logger.info(f"Saved article for topic '{topic}' to database")
+                        except Exception as db_error:
+                            logger.error(f"Failed to save article to database: {db_error}")
+                            
+                    except Exception as cache_error:
+                        logger.error(f"Failed to cache article for topic '{topic}': {cache_error}")
+                        logger.error(f"Cache error details: {cache_error}")
+                        import traceback
+                        logger.error(f"Cache error traceback: {traceback.format_exc()}")
+                    return {"articles": [article]}
+                else:
+                    logger.error(f"Failed to generate article for topic '{topic}'")
+                    # Fallback to database articles for this topic
+                    articles = ai_service.db.get_generated_content("article", limit)
+                    logger.info(f"Returning {len(articles)} articles from database as fallback")
+                    return {"articles": articles}
         
         # Fallback to database articles
         articles = ai_service.db.get_generated_content("article", limit)
+        logger.info(f"Returning {len(articles)} articles from database")
         return {"articles": articles}
         
     except Exception as e:
@@ -317,6 +433,65 @@ async def generate_content(content_type: str = "article", topic: Optional[str] =
         logger.error(f"Error generating content: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
+@app.get("/test-cache")
+async def test_cache():
+    """Test Redis caching functionality"""
+    try:
+        from tasks import redis_client
+        import json
+        from datetime import datetime
+        
+        # Test data
+        test_data = {
+            "text": "Test quote",
+            "author": "Test Author",
+            "topic": "test",
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "is_generated": True
+        }
+        
+        # Test key
+        test_key = f"test:quote:test:ru:{datetime.now().strftime('%Y%m%d')}"
+        
+        # Try to save
+        try:
+            test_json = json.dumps(test_data)
+            redis_client.setex(test_key, 60, test_json)
+            logger.info(f"Test: Successfully saved to Redis with key '{test_key}'")
+            
+            # Try to retrieve
+            retrieved_data = redis_client.get(test_key)
+            if retrieved_data:
+                retrieved_json = json.loads(retrieved_data)
+                logger.info(f"Test: Successfully retrieved from Redis: {retrieved_json}")
+                success = retrieved_json == test_data
+            else:
+                logger.error(f"Test: Failed to retrieve from Redis - got None")
+                success = False
+                
+            # Clean up
+            redis_client.delete(test_key)
+            
+            return {
+                "success": success,
+                "test_key": test_key,
+                "saved_data": test_data,
+                "retrieved_data": retrieved_json if retrieved_data else None,
+                "redis_working": True
+            }
+            
+        except Exception as e:
+            logger.error(f"Test: Redis operation failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "redis_working": False
+            }
+            
+    except Exception as e:
+        logger.error(f"Test cache error: {e}")
+        return {"success": False, "error": str(e)}
 
 @app.get("/content/initial")
 async def get_initial_content(language: str = "ru"):

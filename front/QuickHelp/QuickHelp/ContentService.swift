@@ -3,7 +3,7 @@ import Combine
 
 class ContentService: ObservableObject {
     // Backend URL - same as ChatService
-    private let baseURL = "http://192.168.0.102:8000"
+    private let baseURL = "http://localhost:8000"
     
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -50,28 +50,57 @@ class ContentService: ObservableObject {
         await MainActor.run {
             isLoading = true
             errorMessage = nil
+            // Don't clear content immediately - only clear if new content loads successfully
+            print("🔄 ContentService: Starting content refresh for topic: '\(topic)'")
         }
         
+        // Track successful loads
+        var articlesLoaded = false
+        var videosLoaded = false
+        var quoteLoaded = false
+        
         // Load articles, videos, and quote for the specific topic
-        await withTaskGroup(of: Void.self) { group in
+        await withTaskGroup(of: (String, Bool).self) { group in
             group.addTask { 
                 print("📄 ContentService: Fetching articles for topic: '\(topic)'")
-                await self.fetchArticles(topic: topic) 
+                let success = await self.fetchArticles(topic: topic)
+                return ("articles", success)
             }
             group.addTask { 
                 print("🎥 ContentService: Fetching videos for topic: '\(topic)'")
-                await self.fetchVideos(topic: topic) 
+                let success = await self.fetchVideos(topic: topic)
+                return ("videos", success)
             }
             group.addTask { 
-                print("💬 ContentService: Fetching daily quote")
-                await self.fetchDailyQuote() 
+                print("💬 ContentService: Fetching daily quote for topic: '\(topic)'")
+                let success = await self.fetchDailyQuote(topic: topic)
+                return ("quote", success)
+            }
+            
+            // Collect results
+            for await (contentType, success) in group {
+                switch contentType {
+                case "articles":
+                    articlesLoaded = success
+                case "videos":
+                    videosLoaded = success
+                case "quote":
+                    quoteLoaded = success
+                default:
+                    break
+                }
             }
         }
         
         await MainActor.run {
             isLoading = false
             print("✅ ContentService: Content loading completed for topic: '\(topic)'")
-            print("📊 ContentService: Articles: \(self.articles.count), Videos: \(self.videos.count), Quote: \(self.dailyQuote != nil ? "loaded" : "none")")
+            print("📊 ContentService: Articles: \(self.articles.count) (loaded: \(articlesLoaded)), Videos: \(self.videos.count) (loaded: \(videosLoaded)), Quote: \(self.dailyQuote != nil ? "loaded" : "none") (loaded: \(quoteLoaded))")
+            
+            // Only show error if all content failed to load
+            if !articlesLoaded && !videosLoaded && !quoteLoaded {
+                errorMessage = "Не удалось загрузить контент для темы '\(topic)'"
+            }
         }
     }
     
@@ -191,52 +220,52 @@ class ContentService: ObservableObject {
     
     // MARK: - Topic-Based Content
     
-    func fetchArticles(topic: String? = nil) async {
+    func fetchArticles(topic: String? = nil) async -> Bool {
         print("📄 ContentService: fetchArticles called with topic: '\(topic ?? "nil")'")
-        
-        await MainActor.run {
-            isLoading = true
-            errorMessage = nil
-        }
         
         do {
             var urlString = "\(baseURL)/content/articles?language=\(currentLanguage.rawValue)"
             if let topic = topic {
-                urlString += "&topic=\(topic.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? topic)"
+                let encodedTopic = topic.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? topic
+                urlString += "&topic=\(encodedTopic)"
+                print("📄 ContentService: Encoded topic '\(topic)' to '\(encodedTopic)'")
             }
             
             guard let url = URL(string: urlString) else {
-                await MainActor.run {
-                    errorMessage = "Invalid URL"
-                    isLoading = false
-                }
-                return
+                print("📄 ContentService: Invalid URL for articles")
+                return false
             }
+            
+            print("📄 ContentService: Fetching articles from: \(url)")
             
             let (data, response) = try await URLSession.shared.data(from: url)
             
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                await MainActor.run {
-                    errorMessage = "Server error"
-                    isLoading = false
-                }
-                return
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("📄 ContentService: Invalid response for articles")
+                return false
             }
+            
+            if httpResponse.statusCode != 200 {
+                let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
+                print("📄 ContentService: Server error: \(httpResponse.statusCode) - \(errorText)")
+                return false
+            }
+            
+            // Print response data for debugging
+            let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
+            print("📄 ContentService: Response data: \(responseString)")
             
             let articlesResponse = try JSONDecoder().decode(ArticlesResponse.self, from: data)
             
             await MainActor.run {
                 self.articles = articlesResponse.articles
-                self.isLoading = false
                 print("📄 ContentService: Articles loaded: \(articlesResponse.articles.count) articles")
             }
+            return true
             
         } catch {
-            await MainActor.run {
-                errorMessage = "Failed to fetch articles: \(error.localizedDescription)"
-                isLoading = false
-            }
+            print("📄 ContentService: Failed to fetch articles: \(error.localizedDescription)")
+            return false
         }
     }
     
@@ -244,56 +273,53 @@ class ContentService: ObservableObject {
     
     // MARK: - Daily Quote
     
-    func fetchDailyQuote() async {
-        // Check if we need to fetch new quote (once per day)
-        let today = Date().formatted(date: .numeric, time: .omitted)
-        let lastDate = userDefaults.string(forKey: lastQuoteDateKey)
-        
-        if lastDate == today && dailyQuote != nil {
-            return // Already have today's quote
-        }
-        
-        await MainActor.run {
-            isLoading = true
-            errorMessage = nil
+    func fetchDailyQuote(topic: String? = nil) async -> Bool {
+        let today = Date().formatted(date: .numeric, time: .omitted) // <-- переместил сюда
+        // Check if we need to fetch new quote (once per day) - only for general quotes
+        if topic == nil {
+            let lastDate = userDefaults.string(forKey: lastQuoteDateKey)
+            
+            if lastDate == today && dailyQuote != nil {
+                return true // Already have today's quote
+            }
         }
         
         do {
             let languageParam = currentLanguage.rawValue
-            guard let url = URL(string: "\(baseURL)/content/daily-quote?language=\(languageParam)") else {
-                await MainActor.run {
-                    errorMessage = "Invalid URL"
-                    isLoading = false
-                }
-                return
+            var urlString = "\(baseURL)/content/daily-quote?language=\(languageParam)"
+            if let topic = topic {
+                let encodedTopic = topic.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? topic
+                urlString += "&topic=\(encodedTopic)"
+                print("💬 ContentService: Fetching quote for topic: '\(topic)' (encoded: '\(encodedTopic)')")
+            }
+            
+            guard let url = URL(string: urlString) else {
+                print("💬 ContentService: Invalid URL for daily quote")
+                return false
             }
             
             let (data, response) = try await URLSession.shared.data(from: url)
             
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
-                await MainActor.run {
-                    errorMessage = "Server error"
-                    isLoading = false
-                }
-                return
+                print("💬 ContentService: Server error for daily quote")
+                return false
             }
             
             let quote = try JSONDecoder().decode(Quote.self, from: data)
             
             await MainActor.run {
                 self.dailyQuote = quote
-                self.isLoading = false
+                print("💬 ContentService: Daily quote loaded")
                 
                 // Cache the quote
                 self.cacheDailyQuote(quote, date: today)
             }
+            return true
             
         } catch {
-            await MainActor.run {
-                errorMessage = "Failed to fetch quote: \(error.localizedDescription)"
-                isLoading = false
-            }
+            print("💬 ContentService: Failed to fetch quote: \(error.localizedDescription)")
+            return false
         }
     }
     
@@ -342,7 +368,15 @@ class ContentService: ObservableObject {
                let topic = contentDict["topic"] as? String,
                let date = contentDict["date"] as? String {
                 
-                let quote = Quote(text: text, author: author, topic: topic, date: date, isGenerated: true)
+                let quote = Quote(
+                    text: text, 
+                    author: author, 
+                    topic: topic, 
+                    date: date, 
+                    isGenerated: true,
+                    language: currentLanguage.rawValue,
+                    createdAt: Date().formatted()
+                )
                 
                 await MainActor.run {
                     self.isLoading = false
@@ -414,7 +448,8 @@ class ContentService: ObservableObject {
                             title: title,
                             content: content,
                             sourceTopics: [topic],
-                            createdAt: Date().formatted()
+                            createdAt: Date().formatted(),
+                            topic: topic
                         )
                         newArticles.append(article)
                     }
@@ -441,27 +476,21 @@ class ContentService: ObservableObject {
     
     // MARK: - Videos
     
-    func fetchVideos(topic: String? = nil, limit: Int = 10) async {
+    func fetchVideos(topic: String? = nil, limit: Int = 10) async -> Bool {
         print("🎥 ContentService: fetchVideos called with topic: '\(topic ?? "nil")'")
-        
-        await MainActor.run {
-            isLoading = true
-            errorMessage = nil
-        }
         
         do {
             let languageParam = currentLanguage.rawValue
             var urlString = "\(baseURL)/content/videos?limit=\(limit)&language=\(languageParam)"
             if let topic = topic {
-                urlString += "&topic=\(topic.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? topic)"
+                let encodedTopic = topic.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? topic
+                urlString += "&topic=\(encodedTopic)"
+                print("🎥 ContentService: Encoded topic '\(topic)' to '\(encodedTopic)'")
             }
             
             guard let url = URL(string: urlString) else {
-                await MainActor.run {
-                    errorMessage = "Invalid URL"
-                    isLoading = false
-                }
-                return
+                print("🎥 ContentService: Invalid URL for videos")
+                return false
             }
             
             print("🎥 ContentService: Fetching videos from: \(url)")
@@ -469,21 +498,14 @@ class ContentService: ObservableObject {
             let (data, response) = try await URLSession.shared.data(from: url)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                await MainActor.run {
-                    errorMessage = "Invalid response"
-                    isLoading = false
-                }
-                return
+                print("🎥 ContentService: Invalid response for videos")
+                return false
             }
             
             if httpResponse.statusCode != 200 {
                 let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
-                await MainActor.run {
-                    errorMessage = "Server error (\(httpResponse.statusCode)): \(errorText)"
-                    isLoading = false
-                }
                 print("Server error: \(httpResponse.statusCode) - \(errorText)")
-                return
+                return false
             }
             
             // Print response data for debugging
@@ -494,7 +516,6 @@ class ContentService: ObservableObject {
             
             await MainActor.run {
                 self.videos = videosResponse.videos
-                self.isLoading = false
                 print("🎥 ContentService: Successfully loaded \(videosResponse.videos.count) videos")
                 
                 // Debug: print first video structure
@@ -502,13 +523,11 @@ class ContentService: ObservableObject {
                     print("🎥 ContentService: First video structure: \(firstVideo)")
                 }
             }
+            return true
             
         } catch {
-            await MainActor.run {
-                errorMessage = "Failed to fetch videos: \(error.localizedDescription)"
-                isLoading = false
-                print("Error fetching videos: \(error)")
-            }
+            print("🎥 ContentService: Failed to fetch videos: \(error.localizedDescription)")
+            return false
         }
     }
     

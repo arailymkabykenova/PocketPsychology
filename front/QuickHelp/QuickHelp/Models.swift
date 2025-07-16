@@ -152,7 +152,11 @@ struct InitialContent: Codable {
     let daily_quote: Quote?
     let random_articles: [Article]
     let random_videos: [Video]
-    let welcome_message: String
+    let language: String?
+    let is_initial: Bool?
+    
+    // Опциональные поля для обратной совместимости
+    let welcome_message: String?
 }
 
 // MARK: - Task Status Models
@@ -186,9 +190,15 @@ struct Quote: Codable, Identifiable {
     let date: String
     let isGenerated: Bool?
     
+    // Дополнительные поля от бэкенда
+    let language: String?
+    let createdAt: String?
+    
     enum CodingKeys: String, CodingKey {
         case text, author, topic, date
         case isGenerated = "is_generated"
+        case language
+        case createdAt = "created_at"
     }
 }
 
@@ -196,13 +206,15 @@ struct Article: Codable, Identifiable {
     let id = UUID()
     let title: String
     let content: String
-    let sourceTopics: [String]
-    let createdAt: String
+    let sourceTopics: [String]?  // Делаем опциональным, так как в JSON может не быть
+    let createdAt: String?       // Делаем опциональным, так как в JSON может не быть
+    let topic: String?           // Поддержка поля topic от бэкенда
     
     enum CodingKeys: String, CodingKey {
         case title, content
         case sourceTopics = "source_topics"
         case createdAt = "created_at"
+        case topic
     }
     
     // Computed properties for UI
@@ -220,7 +232,7 @@ struct Article: Codable, Identifiable {
     }
     
     var category: String {
-        return sourceTopics.first ?? "Общее"
+        return topic ?? sourceTopics?.first ?? "Общее"
     }
 }
 

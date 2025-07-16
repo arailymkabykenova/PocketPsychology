@@ -11,6 +11,22 @@ struct HomeView: View {
         localizationManager.currentLanguage
     }
     
+    // Show error alert only if there's an error AND no content is loaded
+    private var shouldShowErrorAlert: Bool {
+        guard let errorMessage = contentService.errorMessage, !errorMessage.isEmpty else {
+            return false
+        }
+        
+        // Don't show error if we have any content loaded
+        let hasArticles = !contentService.articles.isEmpty
+        let hasVideos = !contentService.videos.isEmpty
+        let hasQuote = contentService.dailyQuote != nil
+        let hasInitialContent = contentService.isInitialContentLoaded
+        
+        // Only show error if no content at all is available
+        return !hasArticles && !hasVideos && !hasQuote && !hasInitialContent
+    }
+    
     var body: some View {
         NavigationStack {
             let _ = print("🏠 HomeView: Rendering with topic='\(chatService.currentTopic ?? "nil")', articles=\(contentService.articles.count), videos=\(contentService.videos.count)")
@@ -49,17 +65,17 @@ struct HomeView: View {
             .background(Color(.systemGray6))
             .navigationTitle("QuickHelp")
             .refreshable {
-                // Pull to refresh
+                // Pull to refresh - only refresh content, don't change topic
                 if let topic = chatService.currentTopic {
+                    print("🔄 HomeView: Pull-to-refresh - refreshing content for topic: '\(topic)'")
                     await contentService.loadContentForTopic(topic)
                 } else {
+                    print("🔄 HomeView: Pull-to-refresh - no topic, loading initial content")
                     await contentService.fetchInitialContent()
                 }
                 
-                // Refresh user topic
-                if let topic = await chatService.fetchUserTopic() {
-                    chatService.updateCurrentTopic(topic)
-                }
+                // Note: Removed topic refresh to avoid conflicts
+                // If you need to refresh topic, do it separately
             }
             .onChange(of: currentLanguage) { newLanguage in
                 // Update content service language and refresh content
@@ -83,7 +99,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .alert("Ошибка", isPresented: .constant(contentService.errorMessage != nil)) {
+            .alert("Ошибка", isPresented: .constant(shouldShowErrorAlert)) {
                 Button("OK") {
                     contentService.clearError()
                 }
@@ -404,14 +420,6 @@ struct ArticlesSection: View {
                     .fontWeight(.semibold)
                 
                 Spacer()
-                
-                Button(localizationManager.currentLanguage == .russian ? "Сгенерировать" : "Generate") {
-                    Task {
-                        await contentService.generateArticles()
-                    }
-                }
-                .font(.subheadline)
-                .foregroundColor(.blue)
             }
             
             if isLoading {
@@ -438,8 +446,8 @@ struct ArticlesSection: View {
                         .foregroundColor(.secondary)
                     
                     Text(localizationManager.currentLanguage == .russian ? 
-                        "Нажмите 'Сгенерировать' для создания статей" : 
-                        "Tap 'Generate' to create articles")
+                        "Статьи появятся после общения с чат-ботом" : 
+                        "Articles will appear after chatting with the bot")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -548,12 +556,6 @@ struct VideosSection: View {
                     .fontWeight(.semibold)
                 
                 Spacer()
-                
-                Button(localizationManager.localizedString(.all)) {
-                    // TODO: Navigate to all videos
-                }
-                .font(.subheadline)
-                .foregroundColor(.blue)
             }
             
             if isLoading {

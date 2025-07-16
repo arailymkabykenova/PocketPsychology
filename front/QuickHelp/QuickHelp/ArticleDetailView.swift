@@ -53,7 +53,19 @@ struct ArticleDetailView: View {
                             .foregroundColor(.secondary)
                         
                         HStack {
-                            ForEach(article.sourceTopics, id: \.self) { topic in
+                            if let sourceTopics = article.sourceTopics {
+                                ForEach(sourceTopics, id: \.self) { topic in
+                                    Text(topic.capitalized)
+                                        .font(.caption)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.green.opacity(0.1))
+                                        )
+                                        .foregroundColor(.green)
+                                }
+                            } else if let topic = article.topic {
                                 Text(topic.capitalized)
                                     .font(.caption)
                                     .padding(.horizontal, 8)
@@ -88,6 +100,7 @@ struct ArticleDetailView: View {
         title: "Как справиться со стрессом",
         content: "Стресс - это естественная реакция организма на сложные ситуации...",
         sourceTopics: ["стресс", "психология"],
-        createdAt: "2024-01-01"
+        createdAt: "2024-01-01",
+        topic: "стресс"
     ))
 } 

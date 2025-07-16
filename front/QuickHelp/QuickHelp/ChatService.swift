@@ -3,8 +3,7 @@ import Combine
 
 class ChatService: ObservableObject {
     // Backend URL - change this to your actual backend URL
-   //private let baseURL = "http://localhost:8000"
-    private let baseURL = "http://192.168.0.102:8000"
+    private let baseURL = "http://localhost:8000"
     
     @Published var isLoading = false
     @Published var errorMessage: String?
