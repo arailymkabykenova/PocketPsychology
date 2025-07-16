@@ -113,8 +113,9 @@ def extract_topic_from_message(message: str, user_id: str = "default", language:
         
 
         
-        # Cache topic for user (short cache time for immediate access)
+        # Clear previous topic cache and set new topic
         cache_key = f"user_topic:{user_id}"
+        redis_client.delete(cache_key)  # Clear previous cache
         redis_client.setex(cache_key, 60, topic)  # Cache for 1 minute
         logger.info(f"Cached topic for user {user_id}: '{topic}'")
         
@@ -195,20 +196,39 @@ def generate_content_for_topic(topic: str, content_type: str = "article", langua
             raise Exception("AI service or content generator not available")
         
         if content_type == "article":
-            # Generate article for topic
-            topic_dict = {"topic": topic, "frequency": 1}
-            article = content_generator._generate_article(topic_dict, language)
+            # Generate 3 articles for topic with different approaches
+            topic_dict = {"topic": topic, "frequency": 3}
+            articles = content_generator._generate_multiple_articles(topic_dict, language)
             
-            if article:
-                # Cache the article with language
-                cache_key = f"article:{topic}:{language}:{datetime.now().strftime('%Y%m%d')}"
-                redis_client.setex(cache_key, 86400, json.dumps(article))  # Cache for 24 hours
+            if articles:
+                # Cache each article with language and approach
+                cached_articles = []
+                for article in articles:
+                    approach = article.get("approach", "practical")
+                    cache_key = f"article:{topic}:{language}:{approach}:{datetime.now().strftime('%Y%m%d')}"
+                    redis_client.setex(cache_key, 86400, json.dumps(article))  # Cache for 24 hours
+                    
+                    # Also save to database directly
+                    try:
+                        db.save_generated_content(
+                            content_type="article",
+                            title=article["title"],
+                            content=article["content"],
+                            source_topics=[topic.lower()],
+                            approach=approach
+                        )
+                        logger.info(f"Saved article '{article['title'][:50]}...' to database for topic '{topic}'")
+                    except Exception as db_error:
+                        logger.error(f"Failed to save article to database: {db_error}")
+                    
+                    cached_articles.append(article)
                 
                 return {
                     "content_type": "article",
                     "topic": topic,
                     "language": language,
-                    "content": article,
+                    "content": cached_articles,
+                    "articles_count": len(cached_articles),
                     "cached": True
                 }
         
@@ -302,16 +322,31 @@ def generate_daily_content(self) -> Dict:
             topic = topic_data["topic"]
             logger.info(f"Generating content for popular topic: {topic}")
             
-            # Generate article for topic
+            # Generate 3 articles for topic with different approaches
             try:
-                article = content_generator._generate_article({"topic": topic, "frequency": topic_data.get("frequency", 1)})
-                if article:
-                    generated_articles.append(article)
-                    # Cache the article
-                    cache_key = f"article:{topic}:{datetime.now().strftime('%Y%m%d')}"
-                    redis_client.setex(cache_key, 86400, json.dumps(article))  # Cache for 24 hours
+                articles = content_generator._generate_multiple_articles({"topic": topic, "frequency": 3})
+                if articles:
+                    generated_articles.extend(articles)
+                    # Cache each article with approach and save to database
+                    for article in articles:
+                        approach = article.get("approach", "practical")
+                        cache_key = f"article:{topic}:{approach}:{datetime.now().strftime('%Y%m%d')}"
+                        redis_client.setex(cache_key, 86400, json.dumps(article))  # Cache for 24 hours
+                        
+                        # Also save to database
+                        try:
+                            db.save_generated_content(
+                                content_type="article",
+                                title=article["title"],
+                                content=article["content"],
+                                source_topics=[topic.lower()],
+                                approach=approach
+                            )
+                            logger.info(f"Saved daily article '{article['title'][:50]}...' to database for topic '{topic}'")
+                        except Exception as db_error:
+                            logger.error(f"Failed to save daily article to database: {db_error}")
             except Exception as e:
-                logger.error(f"Error generating article for topic {topic}: {e}")
+                logger.error(f"Error generating articles for topic {topic}: {e}")
             
             # Generate quote for topic
             try:
@@ -419,16 +454,18 @@ def generate_content_for_all_topics() -> Dict:
             
             logger.info(f"Generating content for topic: {topic} (frequency: {frequency})")
             
-            # Generate article for topic
+            # Generate 3 articles for topic with different approaches
             try:
-                article = content_generator._generate_article({"topic": topic, "frequency": frequency})
-                if article:
-                    generated_content["articles"].append(article)
-                    # Cache the article
-                    cache_key = f"article:{topic}:{datetime.now().strftime('%Y%m%d')}"
-                    redis_client.setex(cache_key, 86400, json.dumps(article))  # Cache for 24 hours
+                articles = content_generator._generate_multiple_articles({"topic": topic, "frequency": 3})
+                if articles:
+                    generated_content["articles"].extend(articles)
+                    # Cache each article with approach
+                    for article in articles:
+                        approach = article.get("approach", "practical")
+                        cache_key = f"article:{topic}:{approach}:{datetime.now().strftime('%Y%m%d')}"
+                        redis_client.setex(cache_key, 86400, json.dumps(article))  # Cache for 24 hours
             except Exception as e:
-                logger.error(f"Error generating article for topic {topic}: {e}")
+                logger.error(f"Error generating articles for topic {topic}: {e}")
             
             # Generate quote for topic
             try:
@@ -465,6 +502,7 @@ def generate_initial_random_content() -> Dict:
     """
     Generate initial random content for new users (quotes, articles, videos)
     This runs only once when user first sends a message
+    Now generates 3 articles per topic for better initial experience
     """
     try:
         # Import ContentGenerator here to avoid circular import
@@ -481,17 +519,22 @@ def generate_initial_random_content() -> Dict:
             logger.info("Initialized default quotes")
         
         # Generate initial articles for common psychological topics
+        # Each topic will get 3 articles (practical, theoretical, motivational)
         common_topics = ["стресс", "тревога", "мотивация", "уверенность", "отношения", "здоровье"]
         
         generated_articles = []
         for topic in common_topics:
             try:
-                article = content_generator._generate_article({"topic": topic, "frequency": 1})
-                if article:
-                    generated_articles.append(article)
-                    logger.info(f"Generated initial article for topic: {topic}")
+                # Generate 3 articles for each topic with different approaches
+                topic_dict = {"topic": topic, "frequency": 3}
+                articles = content_generator._generate_multiple_articles(topic_dict)
+                if articles:
+                    generated_articles.extend(articles)
+                    logger.info(f"Generated {len(articles)} initial articles for topic: {topic}")
+                else:
+                    logger.warning(f"No articles generated for topic: {topic}")
             except Exception as e:
-                logger.error(f"Error generating initial article for {topic}: {e}")
+                logger.error(f"Error generating initial articles for {topic}: {e}")
         
         # Cache initial content
         initial_content = {
@@ -541,12 +584,12 @@ def initialize_startup_content() -> Dict:
         generated_articles = []
         for topic in common_topics:
             try:
-                article = content_generator._generate_article({"topic": topic, "frequency": 1})
-                if article:
-                    generated_articles.append(article)
-                    logger.info(f"Generated initial article for topic: {topic}")
+                articles = content_generator._generate_multiple_articles({"topic": topic, "frequency": 3})
+                if articles:
+                    generated_articles.extend(articles)
+                    logger.info(f"Generated {len(articles)} initial articles for topic: {topic}")
             except Exception as e:
-                logger.error(f"Error generating initial article for {topic}: {e}")
+                logger.error(f"Error generating initial articles for {topic}: {e}")
         
         # Cache initial content
         initial_content = {
@@ -612,7 +655,12 @@ def get_initial_random_content() -> Optional[Dict]:
     cache_key = "initial_content"
     data = redis_client.get(cache_key)
     if data:
-        return json.loads(data)
+        cached_data = json.loads(data)
+        # Get fresh articles from database, grouped by topic
+        if db:
+            articles = db.get_articles_grouped_by_topic(limit_per_topic=3)
+            cached_data["articles"] = articles
+        return cached_data
     return None
 
 def force_refresh_topic(user_id: str) -> None:
@@ -622,10 +670,13 @@ def force_refresh_topic(user_id: str) -> None:
     # Get current topic before clearing
     current_topic = redis_client.get(cache_key)
     if current_topic:
+        if isinstance(current_topic, bytes):
+            current_topic = current_topic.decode('utf-8')
         logger.info(f"Clearing topic cache for user {user_id}, current topic: '{current_topic}'")
     else:
         logger.info(f"Clearing topic cache for user {user_id}, no current topic")
     
+    # Clear cache immediately
     redis_client.delete(cache_key)
     
     # Also clear from database to force fresh extraction

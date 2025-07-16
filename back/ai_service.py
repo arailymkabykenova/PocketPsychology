@@ -171,7 +171,10 @@ class AIService:
             self._add_to_history(mode, "assistant", ai_response)
             
             # Import tasks here to avoid circular import
-            from tasks import extract_topic_from_message, update_user_recommendations, get_cached_topic
+            from tasks import extract_topic_from_message, update_user_recommendations, get_cached_topic, force_refresh_topic
+            
+            # Force clear any cached topic to ensure fresh analysis
+            force_refresh_topic(user_id)
             
             # Extract topic asynchronously using Celery with detected language
             topic_task = extract_topic_from_message.delay(message, user_id, final_language)

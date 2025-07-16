@@ -50,6 +50,17 @@ enum LocalizationKey {
     case motivationalVideos
     case all
     case quoteOfTheDay
+    case practicalArticle
+    case theoreticalArticle
+    case motivationalArticle
+    case accountManagement
+    case deleteAccount
+    case deleteAccountAlert
+    case deleteAccountMessage
+    case delete
+    case generatingContent
+    case generatingContentForTopic
+    case analyzing
 
     
     var russian: String {
@@ -96,6 +107,28 @@ enum LocalizationKey {
             return "Все"
         case .quoteOfTheDay:
             return "Цитата дня"
+        case .practicalArticle:
+            return "Практическая статья"
+        case .theoreticalArticle:
+            return "Теоретическая статья"
+        case .motivationalArticle:
+            return "Мотивационная статья"
+        case .accountManagement:
+            return "Управление аккаунтом"
+        case .deleteAccount:
+            return "Удалить аккаунт"
+        case .deleteAccountAlert:
+            return "Удалить аккаунт?"
+        case .deleteAccountMessage:
+            return "Это действие удалит все ваши данные, включая историю чата и персонализированные настройки. Это действие нельзя отменить."
+        case .delete:
+            return "Удалить"
+        case .generatingContent:
+            return "Генерируем контент"
+        case .generatingContentForTopic:
+            return "Генерирую контент..."
+        case .analyzing:
+            return "Анализирую..."
         }
     }
     
@@ -143,6 +176,28 @@ enum LocalizationKey {
             return "All"
         case .quoteOfTheDay:
             return "Quote of the Day"
+        case .practicalArticle:
+            return "Practical Article"
+        case .theoreticalArticle:
+            return "Theoretical Article"
+        case .motivationalArticle:
+            return "Motivational Article"
+        case .accountManagement:
+            return "Account Management"
+        case .deleteAccount:
+            return "Delete Account"
+        case .deleteAccountAlert:
+            return "Delete Account?"
+        case .deleteAccountMessage:
+            return "This action will delete all your data, including chat history and personalized settings. This action cannot be undone."
+        case .delete:
+            return "Delete"
+        case .generatingContent:
+            return "Generating content"
+        case .generatingContentForTopic:
+            return "Generating content..."
+        case .analyzing:
+            return "Analyzing..."
         }
     }
 } 

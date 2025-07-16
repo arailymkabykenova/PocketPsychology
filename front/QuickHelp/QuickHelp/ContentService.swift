@@ -449,7 +449,8 @@ class ContentService: ObservableObject {
                             content: content,
                             sourceTopics: [topic],
                             createdAt: Date().formatted(),
-                            topic: topic
+                            topic: topic,
+                            approach: articleDict["approach"] as? String
                         )
                         newArticles.append(article)
                     }

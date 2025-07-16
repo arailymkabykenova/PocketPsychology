@@ -17,6 +17,18 @@ struct ArticleDetailView: View {
                             .foregroundColor(.primary)
                         
                         HStack {
+                            // Approach badge
+                            Text(article.approachDisplayName)
+                                .font(.caption)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(article.approachColor.opacity(0.1))
+                                )
+                                .foregroundColor(article.approachColor)
+                            
+                            // Topic badge
                             Text(article.category)
                                 .font(.caption)
                                 .padding(.horizontal, 12)
@@ -101,6 +113,7 @@ struct ArticleDetailView: View {
         content: "Стресс - это естественная реакция организма на сложные ситуации...",
         sourceTopics: ["стресс", "психология"],
         createdAt: "2024-01-01",
-        topic: "стресс"
+        topic: "стресс",
+        approach: "practical"
     ))
 } 

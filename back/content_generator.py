@@ -27,22 +27,14 @@ class ContentGenerator:
             
             for topic in popular_topics:
                 if content_type == "article":
-                    content = self._generate_article(topic)
+                    # Generate 3 articles for each topic with different approaches
+                    articles = self._generate_multiple_articles(topic)
+                    generated_content.extend(articles)
                 elif content_type == "video":
                     # For videos, we now recommend YouTube videos instead of generating scripts
                     continue  # Videos are handled separately via YouTube API
                 else:
                     continue
-                
-                if content:
-                    # Save to database
-                    self.db.save_generated_content(
-                        content_type=content_type,
-                        title=content["title"],
-                        content=content["content"],
-                        source_topics=[topic["topic"]]
-                    )
-                    generated_content.append(content)
             
             logger.info(f"Generated {len(generated_content)} {content_type}s")
             return generated_content
@@ -51,11 +43,66 @@ class ContentGenerator:
             logger.error(f"Error generating content: {str(e)}")
             return []
     
-    def _generate_article(self, topic: Dict, language: str = "ru") -> Optional[Dict]:
-        """Generate an article based on a topic"""
+    def _generate_multiple_articles(self, topic: Dict, language: str = "ru") -> List[Dict]:
+        """Generate 3 articles for a topic with different approaches"""
+        articles = []
+        
+        # Define different article approaches
+        approaches = [
+            {
+                "name": "practical",
+                "prompt_suffix": "практические советы и упражнения",
+                "system_suffix": "Создавай практичные статьи с конкретными упражнениями и техниками."
+            },
+            {
+                "name": "theoretical", 
+                "prompt_suffix": "теоретические основы и понимание",
+                "system_suffix": "Создавай образовательные статьи с объяснением психологических концепций."
+            },
+            {
+                "name": "motivational",
+                "prompt_suffix": "мотивация и вдохновение",
+                "system_suffix": "Создавай вдохновляющие статьи с мотивационными советами."
+            }
+        ]
+        
+        for approach in approaches:
+            article = None
+            max_attempts = 3  # Максимум 3 попытки для каждого подхода
+            
+            for attempt in range(max_attempts):
+                try:
+                    article = self._generate_article_with_approach(topic, approach, language)
+                    if article:
+                        articles.append(article)
+                        logger.info(f"Successfully generated {approach['name']} article for topic {topic['topic']} on attempt {attempt + 1}")
+                        break
+                    else:
+                        logger.warning(f"Attempt {attempt + 1} failed for {approach['name']} article on topic {topic['topic']} - got empty result")
+                except Exception as e:
+                    logger.error(f"Attempt {attempt + 1} failed for {approach['name']} article on topic {topic['topic']}: {str(e)}")
+                    if attempt == max_attempts - 1:  # Last attempt
+                        logger.error(f"Failed to generate {approach['name']} article for topic {topic['topic']} after {max_attempts} attempts")
+            
+            # Если не удалось сгенерировать статью, создаем fallback
+            if not article:
+                logger.warning(f"Creating fallback {approach['name']} article for topic {topic['topic']}")
+                fallback_article = self._create_fallback_article(topic, approach, language)
+                if fallback_article:
+                    articles.append(fallback_article)
+                    logger.info(f"Added fallback {approach['name']} article for topic {topic['topic']}")
+        
+        logger.info(f"Generated {len(articles)} articles for topic {topic['topic']} (target: 3)")
+        return articles
+    
+    def _generate_article_with_approach(self, topic: Dict, approach: Dict, language: str = "ru") -> Optional[Dict]:
+        """Generate an article with specific approach"""
         try:
             topic_name = topic["topic"]
             frequency = topic["frequency"]
+            approach_name = approach["name"]
+            prompt_suffix = approach["prompt_suffix"]
+            system_suffix = approach["system_suffix"]
             
             # Create prompt for article generation based on language
             if language == "en":
@@ -67,13 +114,13 @@ class ContentGenerator:
                 - Content should be practical and useful
                 - Length: 300-500 words
                 - Tone: friendly, supportive
-                - Include practical tips and exercises
+                - Focus on: {prompt_suffix}
                 
                 Response format:
                 TITLE: [article title]
                 CONTENT: [article content]
                 """
-                system_prompt = "You are an expert in psychology and self-help. Create quality, practical articles."
+                system_prompt = f"You are an expert in psychology and self-help. {system_suffix}"
             else:
                 prompt = f"""
                 Создай статью на тему "{topic_name}" для приложения самопомощи.
@@ -83,13 +130,13 @@ class ContentGenerator:
                 - Содержание должно быть практичным и полезным
                 - Длина: 300-500 слов
                 - Тон: дружелюбный, поддерживающий
-                - Включи практические советы и упражнения
+                - Фокус на: {prompt_suffix}
                 
                 Формат ответа:
                 ЗАГОЛОВОК: [заголовок статьи]
                 СОДЕРЖАНИЕ: [содержание статьи]
                 """
-                system_prompt = "Ты эксперт по психологии и самопомощи. Создавай качественные, практичные статьи."
+                system_prompt = f"Ты эксперт по психологии и самопомощи. {system_suffix}"
             
             # Get AI response
             response = self.ai_service.client.chat.completions.create(
@@ -108,35 +155,112 @@ class ContentGenerator:
             lines = ai_response.split('\n')
             title = ""
             content = ""
+            content_started = False
             
             for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
                 if language == "en":
                     if line.startswith("TITLE:"):
                         title = line.replace("TITLE:", "").strip()
+                        content_started = False
                     elif line.startswith("CONTENT:"):
                         content = line.replace("CONTENT:", "").strip()
-                    elif title and not content:
-                        content += line.strip() + " "
+                        content_started = True
+                    elif content_started:
+                        content += " " + line
                 else:
                     if line.startswith("ЗАГОЛОВОК:"):
                         title = line.replace("ЗАГОЛОВОК:", "").strip()
+                        content_started = False
                     elif line.startswith("СОДЕРЖАНИЕ:"):
                         content = line.replace("СОДЕРЖАНИЕ:", "").strip()
-                    elif title and not content:
-                        content += line.strip() + " "
+                        content_started = True
+                    elif content_started:
+                        content += " " + line
             
             if title and content:
                 return {
                     "title": title,
                     "content": content,
                     "topic": topic_name,
-                    "frequency": frequency
+                    "frequency": frequency,
+                    "approach": approach_name
                 }
             
             return None
             
         except Exception as e:
+            logger.error(f"Error generating {approach['name']} article for topic {topic}: {str(e)}")
+            return None
+    
+    def _generate_article(self, topic: Dict, language: str = "ru") -> Optional[Dict]:
+        """Generate an article based on a topic (legacy method for compatibility)"""
+        try:
+            # Use the first approach (practical) for backward compatibility
+            approach = {
+                "name": "practical",
+                "prompt_suffix": "практические советы и упражнения",
+                "system_suffix": "Создавай практичные статьи с конкретными упражнениями и техниками."
+            }
+            return self._generate_article_with_approach(topic, approach, language)
+        except Exception as e:
             logger.error(f"Error generating article for topic {topic}: {str(e)}")
+            return None
+    
+    def _create_fallback_article(self, topic: Dict, approach: Dict, language: str = "ru") -> Optional[Dict]:
+        """Create a fallback article when AI generation fails"""
+        try:
+            topic_name = topic["topic"]
+            approach_name = approach["name"]
+            
+            # Fallback content templates based on approach and language
+            if language == "en":
+                fallback_templates = {
+                    "practical": {
+                        "title": f"Practical Guide to {topic_name}: Simple Steps for Improvement",
+                        "content": f"Dealing with {topic_name} can be challenging, but there are practical steps you can take to improve your situation. Start by identifying the specific aspects of {topic_name} that affect you most. Then, create a simple action plan with small, manageable steps. Remember that progress takes time, and every small improvement counts. Focus on what you can control and celebrate your achievements, no matter how small they may seem."
+                    },
+                    "theoretical": {
+                        "title": f"Understanding {topic_name}: A Comprehensive Overview",
+                        "content": f"{topic_name} is a complex psychological concept that affects many aspects of our lives. Understanding the underlying mechanisms and theories can help you better navigate challenges related to {topic_name}. This knowledge provides a foundation for developing effective coping strategies and making informed decisions about your well-being."
+                    },
+                    "motivational": {
+                        "title": f"Finding Strength in {topic_name}: Your Journey to Growth",
+                        "content": f"Every challenge related to {topic_name} is an opportunity for personal growth and development. You have the inner strength to overcome difficulties and emerge stronger. Remember that you are not alone in facing these challenges, and your experiences can inspire others. Stay committed to your journey of self-improvement and believe in your ability to create positive change."
+                    }
+                }
+            else:
+                fallback_templates = {
+                    "practical": {
+                        "title": f"Практическое руководство по {topic_name}: Простые шаги к улучшению",
+                        "content": f"Работа с {topic_name} может быть сложной, но есть практические шаги, которые вы можете предпринять для улучшения ситуации. Начните с определения конкретных аспектов {topic_name}, которые больше всего влияют на вас. Затем создайте простой план действий с небольшими, выполнимыми шагами. Помните, что прогресс требует времени, и каждое небольшое улучшение имеет значение."
+                    },
+                    "theoretical": {
+                        "title": f"Понимание {topic_name}: Комплексный обзор",
+                        "content": f"{topic_name} - это сложная психологическая концепция, которая влияет на многие аспекты нашей жизни. Понимание основных механизмов и теорий может помочь вам лучше справляться с проблемами, связанными с {topic_name}. Эти знания служат основой для разработки эффективных стратегий преодоления трудностей."
+                    },
+                    "motivational": {
+                        "title": f"Найти силу в {topic_name}: Ваш путь к росту",
+                        "content": f"Каждый вызов, связанный с {topic_name}, - это возможность для личностного роста и развития. У вас есть внутренняя сила, чтобы преодолевать трудности и становиться сильнее. Помните, что вы не одиноки в решении этих проблем, и ваш опыт может вдохновить других."
+                    }
+                }
+            
+            template = fallback_templates.get(approach_name, fallback_templates["practical"])
+            
+            return {
+                "title": template["title"],
+                "content": template["content"],
+                "topic": topic_name,
+                "frequency": topic.get("frequency", 1),
+                "approach": approach_name,
+                "is_fallback": True
+            }
+            
+        except Exception as e:
+            logger.error(f"Error creating fallback article for topic {topic['topic']}: {str(e)}")
             return None
     
     def _generate_video_script(self, topic: Dict) -> Optional[Dict]:
@@ -178,14 +302,21 @@ class ContentGenerator:
             lines = ai_response.split('\n')
             title = ""
             content = ""
+            content_started = False
             
             for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
                 if line.startswith("ЗАГОЛОВОК:"):
                     title = line.replace("ЗАГОЛОВОК:", "").strip()
+                    content_started = False
                 elif line.startswith("СЦЕНАРИЙ:"):
                     content = line.replace("СЦЕНАРИЙ:", "").strip()
-                elif title and not content:
-                    content += line.strip() + " "
+                    content_started = True
+                elif content_started:
+                    content += " " + line
             
             if title and content:
                 return {

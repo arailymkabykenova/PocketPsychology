@@ -209,12 +209,14 @@ struct Article: Codable, Identifiable {
     let sourceTopics: [String]?  // Делаем опциональным, так как в JSON может не быть
     let createdAt: String?       // Делаем опциональным, так как в JSON может не быть
     let topic: String?           // Поддержка поля topic от бэкенда
+    let approach: String?        // Новое поле для типа статьи (practical/theoretical/motivational)
     
     enum CodingKeys: String, CodingKey {
         case title, content
         case sourceTopics = "source_topics"
         case createdAt = "created_at"
         case topic
+        case approach
     }
     
     // Computed properties for UI
@@ -233,6 +235,47 @@ struct Article: Codable, Identifiable {
     
     var category: String {
         return topic ?? sourceTopics?.first ?? "Общее"
+    }
+    
+    // Новые computed properties для отображения подхода
+    var approachDisplayName: String {
+        let localizationManager = LocalizationManager.shared
+        switch approach?.lowercased() {
+        case "practical":
+            return localizationManager.localizedString(.practicalArticle)
+        case "theoretical":
+            return localizationManager.localizedString(.theoreticalArticle)
+        case "motivational":
+            return localizationManager.localizedString(.motivationalArticle)
+        default:
+            return localizationManager.currentLanguage == .russian ? "Статья" : "Article"
+        }
+    }
+    
+    var approachIcon: String {
+        switch approach?.lowercased() {
+        case "practical":
+            return "figure.mind.and.body"
+        case "theoretical":
+            return "brain.head.profile"
+        case "motivational":
+            return "heart.fill"
+        default:
+            return "doc.text.fill"
+        }
+    }
+    
+    var approachColor: Color {
+        switch approach?.lowercased() {
+        case "practical":
+            return .green
+        case "theoretical":
+            return .blue
+        case "motivational":
+            return .pink
+        default:
+            return .blue
+        }
     }
 }
 

@@ -48,10 +48,19 @@ class Database:
                     title TEXT NOT NULL,
                     content TEXT NOT NULL,
                     source_topics TEXT,
+                    approach TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT 1
                 )
             ''')
+            
+            # Add approach column if it doesn't exist (for existing databases)
+            try:
+                cursor.execute('ALTER TABLE generated_content ADD COLUMN approach TEXT')
+                logger.info("Added approach column to generated_content table")
+            except sqlite3.OperationalError:
+                # Column already exists
+                pass
             
             # Quotes table
             cursor.execute('''
@@ -209,14 +218,14 @@ class Database:
                 for row in rows
             ]
     
-    def save_generated_content(self, content_type: str, title: str, content: str, source_topics: List[str]):
+    def save_generated_content(self, content_type: str, title: str, content: str, source_topics: List[str], approach: str):
         """Save generated content (articles, videos)"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO generated_content (content_type, title, content, source_topics)
-                VALUES (?, ?, ?, ?)
-            ''', (content_type, title, content, json.dumps(source_topics)))
+                INSERT INTO generated_content (content_type, title, content, source_topics, approach)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (content_type, title, content, json.dumps(source_topics), approach))
             conn.commit()
     
     def get_generated_content(self, content_type: str, limit: int = 10) -> List[Dict]:
@@ -224,7 +233,7 @@ class Database:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT title, content, source_topics, created_at
+                SELECT title, content, source_topics, created_at, approach
                 FROM generated_content
                 WHERE content_type = ? AND is_active = 1
                 ORDER BY created_at DESC
@@ -237,10 +246,93 @@ class Database:
                     "title": row[0],
                     "content": row[1],
                     "source_topics": json.loads(row[2]) if row[2] else [],
-                    "created_at": row[3]
+                    "created_at": row[3],
+                    "approach": row[4]
                 }
                 for row in rows
             ]
+    
+    def get_articles_grouped_by_topic(self, topics: List[str] = None, limit_per_topic: int = 3) -> List[Dict]:
+        """
+        Get articles grouped by topic, ensuring each topic has up to 3 articles (practical, theoretical, motivational)
+        If topics is None, returns articles for all available topics
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            if topics:
+                # Get all articles for all topics, filter in Python
+                cursor.execute('''
+                    SELECT title, content, source_topics, created_at, approach
+                    FROM generated_content
+                    WHERE content_type = 'article' AND is_active = 1
+                    ORDER BY source_topics, approach, created_at DESC
+                ''')
+                rows = cursor.fetchall()
+                # Фильтруем только те, где нужный топик реально есть в source_topics
+                filtered_rows = []
+                for row in rows:
+                    source_topics = json.loads(row[2]) if row[2] else []
+                    if any(t.lower() == s.lower() for s in source_topics for t in topics):
+                        filtered_rows.append(row)
+                rows = filtered_rows
+            else:
+                # Get articles for all topics
+                cursor.execute('''
+                    SELECT title, content, source_topics, created_at, approach
+                    FROM generated_content
+                    WHERE content_type = 'article' AND is_active = 1
+                    ORDER BY source_topics, approach, created_at DESC
+                ''')
+                rows = cursor.fetchall()
+            
+            # Group articles by topic and approach
+            articles_by_topic = {}
+            for row in rows:
+                source_topics = json.loads(row[2]) if row[2] else []
+                if source_topics:
+                    topic = source_topics[0]  # Take first topic
+                    approach = row[4] or "practical"
+                    
+                    if topic not in articles_by_topic:
+                        articles_by_topic[topic] = {}
+                    
+                    if approach not in articles_by_topic[topic]:
+                        articles_by_topic[topic][approach] = []
+                    
+                    article = {
+                        "title": row[0],
+                        "content": row[1],
+                        "source_topics": source_topics,
+                        "created_at": row[3],
+                        "approach": approach,
+                        "topic": topic
+                    }
+                    
+                    articles_by_topic[topic][approach].append(article)
+            
+            # Select up to limit_per_topic articles per topic, prioritizing different approaches
+            result = []
+            for topic, approaches in articles_by_topic.items():
+                topic_articles = []
+                
+                # Try to get one article of each approach type
+                for approach in ["practical", "theoretical", "motivational"]:
+                    if approach in approaches and approaches[approach]:
+                        topic_articles.append(approaches[approach][0])  # Take the most recent
+                
+                # If we don't have all 3 approaches, fill with available ones
+                for approach, articles in approaches.items():
+                    if len(topic_articles) < limit_per_topic and approach not in [a["approach"] for a in topic_articles]:
+                        for article in articles:
+                            if len(topic_articles) < limit_per_topic:
+                                topic_articles.append(article)
+                            else:
+                                break
+                
+                result.extend(topic_articles)
+            
+            return result
     
     def get_user_stats(self, user_id: str) -> Dict:
         """Get user conversation statistics"""
@@ -414,7 +506,7 @@ class Database:
                 conn.commit()
                 logger.info(f"Populated database with {len(russian_quotes)} Russian and {len(english_quotes)} English default quotes")
 
-    def update_user_current_topic(self, user_id: str, topic: str):
+    def update_user_current_topic(self, user_id: str, topic: Optional[str]):
         """Update or create user's current topic"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -424,19 +516,26 @@ class Database:
                 CREATE TABLE IF NOT EXISTS user_topics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT UNIQUE NOT NULL,
-                    current_topic TEXT NOT NULL,
+                    current_topic TEXT NULL,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             
-            # Insert or update user's current topic
-            cursor.execute('''
-                INSERT OR REPLACE INTO user_topics (user_id, current_topic, updated_at)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
-            ''', (user_id, topic))
+            if topic is None:
+                # Delete user's current topic
+                cursor.execute('''
+                    DELETE FROM user_topics WHERE user_id = ?
+                ''', (user_id,))
+                logger.info(f"Cleared current topic for user {user_id}")
+            else:
+                # Insert or update user's current topic
+                cursor.execute('''
+                    INSERT OR REPLACE INTO user_topics (user_id, current_topic, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (user_id, topic))
+                logger.info(f"Updated current topic '{topic}' for user {user_id}")
             
             conn.commit()
-            logger.info(f"Updated current topic '{topic}' for user {user_id}")
 
     def get_user_current_topic(self, user_id: str) -> Optional[str]:
         """Get user's current topic"""
@@ -448,7 +547,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS user_topics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT UNIQUE NOT NULL,
-                    current_topic TEXT NOT NULL,
+                    current_topic TEXT NULL,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -511,19 +610,52 @@ class Database:
         return found_topics
 
     def get_user_topic_history(self, user_id: str, days: int = 7) -> List[Dict]:
-        """Get user's topic history over the last N days"""
+        """Get user's topic history for the last N days"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
             cursor.execute('''
-                SELECT current_topic, updated_at
+                SELECT topic, created_at
                 FROM user_topics
-                WHERE user_id = ? AND updated_at >= datetime('now', '-{} days')
-                ORDER BY updated_at DESC
+                WHERE user_id = ? AND created_at >= datetime('now', '-{} days')
+                ORDER BY created_at DESC
             '''.format(days), (user_id,))
             
             rows = cursor.fetchall()
             return [
-                {"topic": row[0], "timestamp": row[1]}
+                {
+                    "topic": row[0],
+                    "created_at": row[1]
+                }
                 for row in rows
-            ] 
+            ]
+    
+    def delete_user_account(self, user_id: str) -> bool:
+        """Delete user account and all associated data"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Check if user exists
+                cursor.execute('SELECT COUNT(*) FROM conversations WHERE user_id = ?', (user_id,))
+                user_exists = cursor.fetchone()[0] > 0
+                
+                if not user_exists:
+                    return False
+                
+                # Delete all user data
+                tables_to_clean = [
+                    'conversations',
+                    'user_sessions', 
+                    'user_topics'
+                ]
+                
+                for table in tables_to_clean:
+                    cursor.execute(f'DELETE FROM {table} WHERE user_id = ?', (user_id,))
+                
+                conn.commit()
+                logger.info(f"Deleted user account data for user_id: {user_id}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Error deleting user account {user_id}: {e}")
+            return False 

@@ -29,46 +29,69 @@ struct HomeView: View {
     
     var body: some View {
         NavigationStack {
-            let _ = print("🏠 HomeView: Rendering with topic='\(chatService.currentTopic ?? "nil")', articles=\(contentService.articles.count), videos=\(contentService.videos.count)")
-            
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Welcome message for new users (only show if no topic yet)
-                    if chatService.currentTopic == nil && !contentService.isInitialContentLoaded {
-                        WelcomeCard(message: localizationManager.currentLanguage == .russian ? 
-                            "Добро пожаловать в QuickHelp! Начните общение в чате, чтобы я мог определить ваши интересы и подобрать персонализированный контент." :
-                            "Welcome to QuickHelp! Start chatting to help me understand your interests and provide personalized content.")
+            ZStack {
+                let _ = print("🏠 HomeView: Rendering with topic='\(chatService.currentTopic ?? "nil")', articles=\(contentService.articles.count), videos=\(contentService.videos.count)")
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Welcome message for new users (only show if no topic yet)
+                        if chatService.currentTopic == nil && !contentService.isInitialContentLoaded {
+                            WelcomeCard(message: localizationManager.currentLanguage == .russian ? 
+                                "Добро пожаловать в QuickHelp! Начните общение в чате, чтобы я мог определить ваши интересы и подобрать персонализированный контент." :
+                                "Welcome to QuickHelp! Start chatting to help me understand your interests and provide personalized content.")
+                        }
+                        
+                        // Current topic indicator
+                        if let currentTopic = chatService.currentTopic {
+                            CurrentTopicCard(topic: currentTopic)
+                        }
+                        
+                        // Content sections - show different content based on whether user has a topic
+                        if let currentTopic = chatService.currentTopic {
+                            // Personalized content based on user's topic
+                            PersonalizedContentSection(
+                                topic: currentTopic,
+                                contentService: contentService,
+                                chatService: chatService
+                            )
+                        } else {
+                            // General content for new users
+                            GeneralContentSection(contentService: contentService)
+                        }
+                        
+                        // Account management section
+                        AccountManagementSection(chatService: chatService)
                     }
-                    
-                    // Current topic indicator
-                    if let currentTopic = chatService.currentTopic {
-                        CurrentTopicCard(topic: currentTopic)
-                    }
-                    
-                    // Content sections - show different content based on whether user has a topic
-                    if let currentTopic = chatService.currentTopic {
-                        // Personalized content based on user's topic
-                        PersonalizedContentSection(
-                            topic: currentTopic,
-                            contentService: contentService,
-                            chatService: chatService
-                        )
-                    } else {
-                        // General content for new users
-                        GeneralContentSection(contentService: contentService)
-                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 32)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 32)
+                .background(Color(.systemGray6))
+                .navigationTitle("QuickHelp")
+                
+                // Full screen loading overlay when content is being generated for a new topic
+                if let currentTopic = chatService.currentTopic, 
+                   chatService.isGeneratingContentForTopic {
+                    ContentLoadingOverlay(topic: currentTopic, isLoading: true)
+                        .animation(.easeInOut(duration: 0.3), value: chatService.isGeneratingContentForTopic)
+                        .zIndex(1000) // Ensure it's on top
+                }
             }
-            .background(Color(.systemGray6))
-            .navigationTitle("QuickHelp")
             .refreshable {
                 // Pull to refresh - only refresh content, don't change topic
                 if let topic = chatService.currentTopic {
                     print("🔄 HomeView: Pull-to-refresh - refreshing content for topic: '\(topic)'")
+                    // Set loading state
+                    await MainActor.run {
+                        chatService.isGeneratingContentForTopic = true
+                    }
+                    
                     await contentService.loadContentForTopic(topic)
+                    
+                    // Clear loading state
+                    await MainActor.run {
+                        chatService.isGeneratingContentForTopic = false
+                    }
                 } else {
                     print("🔄 HomeView: Pull-to-refresh - no topic, loading initial content")
                     await contentService.fetchInitialContent()
@@ -88,7 +111,17 @@ struct HomeView: View {
                 if let topic = newTopic {
                     Task {
                         print("🏠 HomeView: Starting to load content for topic '\(topic)'")
+                        // Set loading state
+                        await MainActor.run {
+                            chatService.isGeneratingContentForTopic = true
+                        }
+                        
                         await contentService.loadContentForTopic(topic)
+                        
+                        // Clear loading state
+                        await MainActor.run {
+                            chatService.isGeneratingContentForTopic = false
+                        }
                         print("🏠 HomeView: Finished loading content for topic '\(topic)'")
                     }
                 } else {
@@ -115,7 +148,19 @@ struct HomeView: View {
                 if let topic = chatService.currentTopic {
                     print("🏠 HomeView: onAppear - Loading content for existing topic '\(topic)'")
                     Task {
+                        // Set loading state only if no content is loaded yet
+                        if contentService.articles.isEmpty && contentService.videos.isEmpty && contentService.dailyQuote == nil {
+                            await MainActor.run {
+                                chatService.isGeneratingContentForTopic = true
+                            }
+                        }
+                        
                         await contentService.loadContentForTopic(topic)
+                        
+                        // Clear loading state
+                        await MainActor.run {
+                            chatService.isGeneratingContentForTopic = false
+                        }
                     }
                 } else {
                     print("🏠 HomeView: onAppear - No topic, loading initial random content")
@@ -276,7 +321,16 @@ struct CurrentTopicCard: View {
                     HStack(spacing: 4) {
                         ProgressView()
                             .scaleEffect(0.8)
-                        Text(localizationManager.currentLanguage == .russian ? "Анализирую..." : "Analyzing...")
+                        Text(localizationManager.localizedString(.analyzing))
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                    }
+                } else if chatService.isGeneratingContentForTopic {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text(localizationManager.localizedString(.generatingContentForTopic))
                             .font(.headline)
                             .fontWeight(.semibold)
                             .foregroundColor(.primary)
@@ -477,16 +531,16 @@ struct ArticleCard: View {
             showingArticleDetail = true
         }) {
             HStack(spacing: 16) {
-                // Article icon
+                // Article icon with approach color
                 VStack {
-                    Image(systemName: "doc.text.fill")
+                    Image(systemName: article.approachIcon)
                         .font(.system(size: 24))
-                        .foregroundColor(.blue)
+                        .foregroundColor(article.approachColor)
                 }
                 .frame(width: 50, height: 50)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.blue.opacity(0.1))
+                        .fill(article.approachColor.opacity(0.1))
                 )
                 
                 // Article content
@@ -502,6 +556,18 @@ struct ArticleCard: View {
                         .lineLimit(2)
                     
                     HStack {
+                        // Approach badge
+                        Text(article.approachDisplayName)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(article.approachColor.opacity(0.1))
+                            )
+                            .foregroundColor(article.approachColor)
+                        
+                        // Topic badge
                         Text(article.category)
                             .font(.caption)
                             .padding(.horizontal, 8)
@@ -684,6 +750,99 @@ struct VideoCard: View {
                 .fill(Color(.systemBackground))
         )
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+    }
+}
+
+// MARK: - Account Management Section
+struct AccountManagementSection: View {
+    @ObservedObject var chatService: ChatService
+    @ObservedObject private var localizationManager = LocalizationManager.shared
+    @State private var showingDeleteAlert = false
+    @State private var isDeleting = false
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Section header
+            HStack {
+                Text(localizationManager.localizedString(.accountManagement))
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+            }
+            
+            // Delete account button
+            Button(action: {
+                showingDeleteAlert = true
+            }) {
+                HStack {
+                    Image(systemName: "trash")
+                        .font(.system(size: 16))
+                        .foregroundColor(.red)
+                    
+                    Text(localizationManager.localizedString(.deleteAccount))
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.red)
+                    
+                    Spacer()
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.red.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                        )
+                )
+            }
+            .disabled(isDeleting)
+            .alert(localizationManager.localizedString(.deleteAccountAlert), isPresented: $showingDeleteAlert) {
+                Button(localizationManager.localizedString(.cancel), role: .cancel) { }
+                Button(localizationManager.localizedString(.delete), role: .destructive) {
+                    Task {
+                        await deleteAccount()
+                    }
+                }
+            } message: {
+                Text(localizationManager.localizedString(.deleteAccountMessage))
+            }
+        }
+    }
+    
+    private func deleteAccount() async {
+        isDeleting = true
+        
+        do {
+            let userId = chatService.userId
+            let url = URL(string: "http://localhost:8000/user/\(userId)/delete")!
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 200 {
+                    // Successfully deleted account
+                    DispatchQueue.main.async {
+                        // Clear local data
+                        chatService.clearAllData()
+                        
+                        // Show success message (you might want to add a success alert here)
+                        print("Account deleted successfully")
+                    }
+                } else {
+                    print("Failed to delete account: HTTP \(httpResponse.statusCode)")
+                }
+            }
+        } catch {
+            print("Error deleting account: \(error)")
+        }
+        
+        isDeleting = false
     }
 }
 

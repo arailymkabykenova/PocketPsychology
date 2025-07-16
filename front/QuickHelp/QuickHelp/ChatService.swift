@@ -13,6 +13,12 @@ class ChatService: ObservableObject {
     @Published var currentUserId: String = ""
     @Published var currentTopic: String?
     @Published var isGeneratingContent = false
+    @Published var isGeneratingContentForTopic = false
+    
+    // Computed property for easy access to user ID
+    var userId: String {
+        return currentUserId
+    }
     
     // Language support
     @Published var currentLanguage: Language = .russian
@@ -97,6 +103,29 @@ class ChatService: ObservableObject {
         userDefaults.removeObject(forKey: modeHistoryKey)
         userDefaults.removeObject(forKey: currentTopicKey)
         currentTopic = nil
+    }
+    
+    func clearAllData() {
+        // Clear all UserDefaults data
+        userDefaults.removeObject(forKey: chatHistoryKey)
+        userDefaults.removeObject(forKey: modeHistoryKey)
+        userDefaults.removeObject(forKey: userIdKey)
+        userDefaults.removeObject(forKey: currentTopicKey)
+        userDefaults.removeObject(forKey: languageKey)
+        
+        // Reset published properties
+        currentUserId = ""
+        currentTopic = nil
+        currentLanguage = .russian
+        isLoading = false
+        errorMessage = nil
+        isGeneratingContent = false
+        
+        // Generate new user ID
+        currentUserId = UUID().uuidString
+        userDefaults.set(currentUserId, forKey: userIdKey)
+        
+        print("🗑️ ChatService: All data cleared, new user_id generated: '\(currentUserId)'")
     }
     
     func clearServerHistory(mode: ChatMode? = nil) async {

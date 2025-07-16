@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Optional
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -224,17 +225,72 @@ async def refresh_user_topic(user_id: str):
 
 
 @app.get("/user/{user_id}/recommendations")
-async def get_user_recommendations(user_id: str):
-    """Get personalized recommendations for a user"""
+async def get_user_recommendations(user_id: str, language: str = "ru"):
+    """Get personalized content recommendations for user"""
     try:
+        if ai_service is None:
+            raise HTTPException(status_code=500, detail="AI service not available")
+        
+        # Get cached recommendations
         recommendations = get_cached_recommendations(user_id)
-        if recommendations:
-            return recommendations
-        else:
-            return {"message": "No recommendations available", "user_id": user_id}
+        
+        if not recommendations:
+            # Generate new recommendations
+            from tasks import update_user_recommendations
+            task = update_user_recommendations.delay(user_id, language)
             
+            return {
+                "message": "Generating recommendations...",
+                "task_id": task.id,
+                "status": "processing"
+            }
+        
+        return recommendations
+        
     except Exception as e:
-        logger.error(f"Error getting user recommendations: {str(e)}")
+        logger.error(f"Error getting recommendations for user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.delete("/user/{user_id}/delete")
+async def delete_user_account(user_id: str):
+    """Delete user account and all associated data"""
+    try:
+        if ai_service is None:
+            raise HTTPException(status_code=500, detail="AI service not available")
+        
+        logger.info(f"Deleting user account: {user_id}")
+        
+        # Delete user data from database
+        success = ai_service.db.delete_user_account(user_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Clear user cache from Redis
+        from tasks import redis_client
+        cache_keys = [
+            f"user_topic:{user_id}",
+            f"recommendations:{user_id}",
+            f"recommendations:{user_id}:ru",
+            f"recommendations:{user_id}:en"
+        ]
+        
+        for key in cache_keys:
+            redis_client.delete(key)
+        
+        logger.info(f"Successfully deleted user account: {user_id}")
+        
+        return {
+            "message": "User account deleted successfully",
+            "user_id": user_id,
+            "deleted_at": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting user account {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -300,66 +356,42 @@ async def get_articles(limit: int = 10, topic: Optional[str] = None, language: s
         logger.info(f"Getting articles - topic: '{topic}', language: '{language}', limit: {limit}")
         
         if topic:
-            # Get cached articles for topic
-            from tasks import redis_client
-            import json
-            from datetime import datetime
+            # Get articles from database for this topic (3 per topic)
+            articles = ai_service.db.get_articles_grouped_by_topic(topics=[topic], limit_per_topic=3)
+            logger.info(f"Returning {len(articles)} articles from database for topic '{topic}'")
             
-            cache_key = f"article:{topic}:{language}:{datetime.now().strftime('%Y%m%d')}"
-            cached_data = redis_client.get(cache_key)
-            
-            if cached_data:
-                article = json.loads(cached_data)
-                logger.info(f"Found cached article for topic '{topic}'")
-                return {"articles": [article]}
-            else:
-                logger.info(f"No cached article found for topic '{topic}', generating new one")
-                # Generate new article for topic
-                topic_dict = {"topic": topic, "frequency": 1}
-                article = content_generator._generate_article(topic_dict, language=language)
-                if article:
-                    # Cache the article
-                    try:
-                        article_json = json.dumps(article)
-                        logger.info(f"Attempting to cache article JSON: {article_json[:100]}...")
-                        redis_client.setex(cache_key, 86400, article_json)  # Cache for 24 hours
-                        logger.info(f"Successfully cached article for topic '{topic}' with key '{cache_key}'")
-                        
-                        # Verify cache
-                        verify_data = redis_client.get(cache_key)
-                        if verify_data:
-                            logger.info(f"Cache verification successful for key '{cache_key}'")
-                        else:
-                            logger.error(f"Cache verification failed for key '{cache_key}' - got None")
-                        
-                        # Also save to database for fallback
+            # If no articles found in database, generate new ones
+            if not articles:
+                logger.info(f"No articles found in database for topic '{topic}', generating new ones")
+                # Generate new articles for topic
+                topic_dict = {"topic": topic, "frequency": 3}
+                generated_articles = content_generator._generate_multiple_articles(topic_dict, language=language)
+                
+                if generated_articles:
+                    # Save generated articles to database
+                    for article in generated_articles:
                         try:
                             ai_service.db.save_generated_content(
                                 content_type="article",
                                 title=article["title"],
                                 content=article["content"],
-                                source_topics=[topic]
+                                source_topics=[topic.lower()],
+                                approach=article.get("approach", "practical")
                             )
-                            logger.info(f"Saved article for topic '{topic}' to database")
+                            logger.info(f"Saved generated article '{article['title'][:50]}...' to database for topic '{topic}'")
                         except Exception as db_error:
-                            logger.error(f"Failed to save article to database: {db_error}")
-                            
-                    except Exception as cache_error:
-                        logger.error(f"Failed to cache article for topic '{topic}': {cache_error}")
-                        logger.error(f"Cache error details: {cache_error}")
-                        import traceback
-                        logger.error(f"Cache error traceback: {traceback.format_exc()}")
-                    return {"articles": [article]}
+                            logger.error(f"Failed to save generated article to database: {db_error}")
+                    
+                    articles = generated_articles
+                    logger.info(f"Generated and saved {len(articles)} articles for topic '{topic}'")
                 else:
-                    logger.error(f"Failed to generate article for topic '{topic}'")
-                    # Fallback to database articles for this topic
-                    articles = ai_service.db.get_generated_content("article", limit)
-                    logger.info(f"Returning {len(articles)} articles from database as fallback")
-                    return {"articles": articles}
+                    logger.error(f"Failed to generate articles for topic '{topic}'")
+            
+            return {"articles": articles}
         
-        # Fallback to database articles
-        articles = ai_service.db.get_generated_content("article", limit)
-        logger.info(f"Returning {len(articles)} articles from database")
+        # Get articles grouped by topic (3 per topic)
+        articles = ai_service.db.get_articles_grouped_by_topic(limit_per_topic=3)
+        logger.info(f"Returning {len(articles)} articles grouped by topic from database")
         return {"articles": articles}
         
     except Exception as e:
@@ -398,29 +430,60 @@ async def get_videos(limit: int = 10, topic: Optional[str] = None, language: str
 async def generate_content(content_type: str = "article", topic: Optional[str] = None, language: str = "ru"):
     """Generate content (article or quote) for a specific topic or general content"""
     try:
+        logger.info(f"Starting content generation: type={content_type}, topic={topic}, language={language}")
+        
+        # Initialize content generator if not available
         if content_generator is None:
-            raise HTTPException(status_code=500, detail="Content generator not available")
+            logger.info("Content generator is None, initializing new instance")
+            from content_generator import ContentGenerator
+            content_gen = ContentGenerator(ai_service.db, ai_service)
+        else:
+            logger.info("Using existing content generator")
+            content_gen = content_generator
         
         if topic:
+            logger.info(f"Generating content for specific topic: {topic}")
             # Generate content for specific topic
             if content_type == "article":
-                topic_dict = {"topic": topic, "frequency": 1}
-                content = content_generator._generate_article(topic_dict, language=language)
+                topic_dict = {"topic": topic, "frequency": 3}
+                logger.info(f"Calling _generate_multiple_articles with topic_dict: {topic_dict}")
+                content = content_gen._generate_multiple_articles(topic_dict, language=language)
+                logger.info(f"Generated {len(content) if content else 0} articles")
             elif content_type == "quote":
-                content = content_generator._generate_quote(topic, language=language)
+                logger.info("Generating quote")
+                content = content_gen._generate_quote(topic, language=language)
             else:
                 raise HTTPException(status_code=400, detail="Invalid content type")
             
             if content:
+                logger.info(f"Successfully generated content: {len(content) if isinstance(content, list) else 1} items")
+                
+                # Save articles to database if content_type is article
+                if content_type == "article" and isinstance(content, list):
+                    for article in content:
+                        try:
+                            ai_service.db.save_generated_content(
+                                content_type="article",
+                                title=article["title"],
+                                content=article["content"],
+                                source_topics=[topic.lower()],
+                                approach=article.get("approach", "practical")
+                            )
+                            logger.info(f"Saved generated article '{article['title'][:50]}...' to database for topic '{topic}'")
+                        except Exception as db_error:
+                            logger.error(f"Failed to save generated article to database: {db_error}")
+                
                 return {
                     "message": f"Generated {content_type} for topic '{topic}'",
                     "content": content
                 }
             else:
+                logger.error(f"Failed to generate {content_type} for topic {topic}")
                 raise HTTPException(status_code=500, detail=f"Failed to generate {content_type}")
         else:
+            logger.info("Generating general content")
             # Generate general content
-            content = content_generator.generate_content_from_chats(content_type, language=language)
+            content = content_gen.generate_content_from_chats(content_type, language=language)
             
             return {
                 "message": f"Generated {len(content)} {content_type}s",
@@ -431,6 +494,8 @@ async def generate_content(content_type: str = "article", topic: Optional[str] =
         raise
     except Exception as e:
         logger.error(f"Error generating content: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -501,13 +566,18 @@ async def get_initial_content(language: str = "ru"):
         initial_content = get_initial_random_content()
         
         if not initial_content:
-            # If no initial content exists, return empty content
+            # If no initial content exists, trigger generation and return empty content
+            logger.info("No initial content found, triggering generation...")
+            from tasks import generate_initial_random_content
+            generate_initial_random_content.delay()
+            
             return {
                 "daily_quote": None,
                 "random_articles": [],
                 "random_videos": [],
                 "language": language,
-                "is_initial": True
+                "is_initial": True,
+                "generation_triggered": True
             }
         
         # Get daily quote
@@ -523,7 +593,8 @@ async def get_initial_content(language: str = "ru"):
             "random_articles": initial_content.get("articles", []),
             "random_videos": random_videos,
             "language": language,
-            "is_initial": True
+            "is_initial": True,
+            "generation_triggered": False
         }
         
     except Exception as e:
