@@ -25,12 +25,14 @@ struct ChatView: View {
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.red)
                     }
+                    .frame(width: 44, height: 44)
                     
                     Spacer()
                     
                     Text(localizationManager.localizedString(.chat))
                         .font(.title2)
                         .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
                     
                     Spacer()
                     
@@ -47,6 +49,7 @@ struct ChatView: View {
                         }
                         .foregroundColor(.blue)
                     }
+                    .frame(width: 44, height: 44)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -65,7 +68,7 @@ struct ChatView: View {
                     .padding(.bottom, 8)
                 }
             }
-            .background(Color.white)
+            .background(Color.customCardBackground)
             
             // Messages list
             ScrollView {
@@ -96,9 +99,14 @@ struct ChatView: View {
             .onChange(of: messages.count) { _ in
                 // Auto-scroll will be handled by the view itself
             }
-            .background(Color(.systemBackground))
+            .background(Color.customBackground)
             .onChange(of: chatService.isLoading) { isLoading in
                 // Auto-scroll will be handled by the view itself
+            }
+            // Add tap gesture to dismiss keyboard when tapping on scroll view
+            .onTapGesture {
+                // This will dismiss the keyboard when tapping on the scroll view
+                KeyboardManager.dismissKeyboard()
             }
             
             // Mode selector button
@@ -186,7 +194,7 @@ struct ChatView: View {
         } message: {
             Text(localizationManager.localizedString(.clearHistoryMessage))
         }
-        .background(Color.white)
+        .background(Color.customBackground)
     }
     
     private var welcomeMessage: some View {
@@ -229,6 +237,7 @@ struct ChatView: View {
             messages.append(userMessage)
         }
         
+        // Clear input text immediately
         inputText = ""
         
         Task {
@@ -285,8 +294,7 @@ struct ChatView: View {
                 .scaleEffect(0.6)
                 .foregroundColor(.blue)
             
-            Text(localizationManager.currentLanguage == .russian ? 
-                "Анализ..." : "Analyzing...")
+            Text(localizationManager.localizedString(.analyzing))
                 .font(.caption)
                 .foregroundColor(.blue)
         }
@@ -316,5 +324,9 @@ struct ChatView: View {
                 .fill(Color.yellow.opacity(0.1))
         )
     }
+}
+
+#Preview {
+    ChatView(chatService: ChatService())
 }
 

@@ -58,8 +58,7 @@ struct ArticleDetailView: View {
                     
                     // Footer
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(localizationManager.currentLanguage == .russian ? 
-                            "Источники тем:" : "Source topics:")
+                        Text(localizationManager.localizedString(.sourceTopics))
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundColor(.secondary)
@@ -98,7 +97,7 @@ struct ArticleDetailView: View {
 
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(localizationManager.currentLanguage == .russian ? "Закрыть" : "Close") {
+                    Button(localizationManager.localizedString(.close)) {
                         dismiss()
                     }
                 }

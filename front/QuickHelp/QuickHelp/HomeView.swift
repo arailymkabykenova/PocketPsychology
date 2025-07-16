@@ -5,6 +5,7 @@ struct HomeView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     @StateObject private var contentService = ContentService()
     @ObservedObject var chatService: ChatService
+    @Binding var showingSettings: Bool
     
     // Sync language between localization manager and content service
     private var currentLanguage: Language {
@@ -36,9 +37,7 @@ struct HomeView: View {
                     VStack(spacing: 24) {
                         // Welcome message for new users (only show if no topic yet)
                         if chatService.currentTopic == nil && !contentService.isInitialContentLoaded {
-                            WelcomeCard(message: localizationManager.currentLanguage == .russian ? 
-                                "Добро пожаловать в QuickHelp! Начните общение в чате, чтобы я мог определить ваши интересы и подобрать персонализированный контент." :
-                                "Welcome to QuickHelp! Start chatting to help me understand your interests and provide personalized content.")
+                            WelcomeCard(message: localizationManager.localizedString(.welcomeMessage))
                         }
                         
                         // Current topic indicator
@@ -58,16 +57,25 @@ struct HomeView: View {
                             // General content for new users
                             GeneralContentSection(contentService: contentService)
                         }
-                        
-                        // Account management section
-                        AccountManagementSection(chatService: chatService)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                     .padding(.bottom, 32)
-                }
-                .background(Color(.systemGray6))
+                            }
+            .background(Color.customBackground)
                 .navigationTitle("QuickHelp")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            showingSettings = true
+                        }) {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
                 
                 // Full screen loading overlay when content is being generated for a new topic
                 if let currentTopic = chatService.currentTopic, 
@@ -228,7 +236,7 @@ struct WelcomeCard: View {
                     .font(.system(size: 48))
                     .foregroundColor(.blue)
                 
-                Text(localizationManager.currentLanguage == .russian ? "Добро пожаловать в QuickHelp!" : "Welcome to QuickHelp!")
+                Text(localizationManager.localizedString(.welcomeMessage))
                     .font(.title2)
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
@@ -244,36 +252,23 @@ struct WelcomeCard: View {
             // Features list
             VStack(alignment: .leading, spacing: 8) {
                 FeatureRow(icon: "message.circle.fill", 
-                          text: localizationManager.currentLanguage == .russian ? "Три режима общения" : "Three conversation modes")
+                          text: localizationManager.localizedString(.threeConversationModes))
                 FeatureRow(icon: "lightbulb.fill", 
-                          text: localizationManager.currentLanguage == .russian ? "Персонализированные темы" : "Personalized topics")
+                          text: localizationManager.localizedString(.personalizedTopics))
                 FeatureRow(icon: "doc.text.fill", 
-                          text: localizationManager.currentLanguage == .russian ? "Полезные статьи" : "Helpful articles")
+                          text: localizationManager.localizedString(.helpfulArticles))
                 FeatureRow(icon: "play.circle.fill", 
-                          text: localizationManager.currentLanguage == .russian ? "Мотивационные видео" : "Motivational videos")
+                          text: localizationManager.localizedString(.motivationalVideos))
             }
             .padding(.top, 8)
         }
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.05)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color.customCardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.2)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
+                        .stroke(Color.customBorder, lineWidth: 1)
                 )
         )
     }
@@ -336,13 +331,19 @@ struct CurrentTopicCard: View {
                             .foregroundColor(.primary)
                     }
                 } else {
-                    Text(topic.capitalized)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Text(localizationManager.localizedString(.currentTopic))
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Text(topic.capitalized)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                        
+                        Spacer()
+                    }
                 }
             }
             
@@ -351,10 +352,10 @@ struct CurrentTopicCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.yellow.opacity(0.1))
+                .fill(Color.customCardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+                        .stroke(Color.customBorder, lineWidth: 1)
                 )
         )
     }
@@ -367,93 +368,92 @@ struct QuoteOfTheDayCard: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Quote icon
-            Image(systemName: "quote.bubble.fill")
-                .font(.system(size: 32))
-                .foregroundColor(.blue.opacity(0.7))
+        VStack(alignment: .leading, spacing: 16) {
+            // Section header
+            HStack {
+                Text(localizationManager.localizedString(.quoteOfTheDay))
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+            }
             
-            if isLoading {
-                // Loading state
-                ProgressView()
-                    .scaleEffect(1.2)
-            } else if let quote = quote {
-                // Quote content
-                VStack(spacing: 12) {
-                    Text(quote.text)
-                        .font(.title2)
-                        .fontWeight(.medium)
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(.primary)
-                    
-                    Text("— \(quote.author)")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .italic()
-                    
-                    // Generate new quote button
-                    Button(action: {
-                        Task {
-                            if let newQuote = await contentService.generateQuote() {
-                                // Quote will be updated via ContentService
+            // Quote content
+            VStack(spacing: 16) {
+                // Quote icon
+                Image(systemName: "quote.bubble.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(.blue.opacity(0.7))
+                
+                if isLoading {
+                    // Loading state
+                    ProgressView()
+                        .scaleEffect(1.2)
+                } else if let quote = quote {
+                    // Quote content
+                    VStack(spacing: 12) {
+                        Text(quote.text)
+                            .font(.title2)
+                            .fontWeight(.medium)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.primary)
+                        
+                        Text("— \(quote.author)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .italic()
+                        
+                        // Generate new quote button
+                        Button(action: {
+                            Task {
+                                if let newQuote = await contentService.generateQuote() {
+                                    // Quote will be updated via ContentService
+                                }
                             }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "sparkles")
+                                    .font(.caption)
+                                Text(localizationManager.localizedString(.newQuote))
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color.blue.opacity(0.1))
+                            )
+                            .foregroundColor(.blue)
                         }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "sparkles")
-                                .font(.caption)
-                            Text(localizationManager.currentLanguage == .russian ? "Новая цитата" : "New Quote")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(Color.blue.opacity(0.1))
-                        )
-                        .foregroundColor(.blue)
                     }
-                }
-            } else {
-                // Fallback content
-                VStack(spacing: 12) {
-                    Text(localizationManager.currentLanguage == .russian ? 
-                        "Будь изменением, которое ты хочешь видеть в мире" :
-                        "Be the change you wish to see in the world")
-                        .font(.title2)
-                        .fontWeight(.medium)
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(.primary)
-                    
-                    Text(localizationManager.currentLanguage == .russian ? 
-                        "— Махатма Ганди" :
-                        "— Mahatma Gandhi")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .italic()
+                } else {
+                    // Fallback content
+                    VStack(spacing: 12) {
+                        Text(localizationManager.localizedString(.defaultQuote))
+                            .font(.title2)
+                            .fontWeight(.medium)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.primary)
+                        
+                        Text("— \(localizationManager.localizedString(.defaultQuoteAuthor))")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .italic()
+                    }
                 }
             }
         }
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.blue.opacity(0.1),
-                            Color.purple.opacity(0.05)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color.customCardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                        .stroke(Color.customBorder, lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
     }
 }
 
@@ -481,7 +481,7 @@ struct ArticlesSection: View {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
-                    Text(localizationManager.currentLanguage == .russian ? "Загрузка..." : "Loading...")
+                    Text(localizationManager.localizedString(.loading))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -494,14 +494,11 @@ struct ArticlesSection: View {
                         .font(.system(size: 40))
                         .foregroundColor(.gray.opacity(0.5))
                     
-                    Text(localizationManager.currentLanguage == .russian ? 
-                        "Нет статей" : "No articles")
+                    Text(localizationManager.localizedString(.noArticles))
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text(localizationManager.currentLanguage == .russian ? 
-                        "Статьи появятся после общения с чат-ботом" : 
-                        "Articles will appear after chatting with the bot")
+                    Text(localizationManager.localizedString(.articlesWillAppear))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -617,7 +614,7 @@ struct VideosSection: View {
             
             // Section header
             HStack {
-                Text(localizationManager.currentLanguage == .russian ? "Мотивационные видео" : "Motivational Videos")
+                Text(localizationManager.localizedString(.motivationalVideos))
                     .font(.title2)
                     .fontWeight(.semibold)
                 
@@ -629,7 +626,7 @@ struct VideosSection: View {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
-                    Text(localizationManager.currentLanguage == .russian ? "Загрузка..." : "Loading...")
+                    Text(localizationManager.localizedString(.loading))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -642,14 +639,11 @@ struct VideosSection: View {
                         .font(.system(size: 40))
                         .foregroundColor(.gray.opacity(0.5))
                     
-                    Text(localizationManager.currentLanguage == .russian ? 
-                        "Нет видео" : "No videos")
+                    Text(localizationManager.localizedString(.noVideos))
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text(localizationManager.currentLanguage == .russian ? 
-                        "Видео появятся после общения с чат-ботом" : 
-                        "Videos will appear after chatting with the bot")
+                    Text(localizationManager.localizedString(.videosWillAppear))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -753,99 +747,6 @@ struct VideoCard: View {
     }
 }
 
-// MARK: - Account Management Section
-struct AccountManagementSection: View {
-    @ObservedObject var chatService: ChatService
-    @ObservedObject private var localizationManager = LocalizationManager.shared
-    @State private var showingDeleteAlert = false
-    @State private var isDeleting = false
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            // Section header
-            HStack {
-                Text(localizationManager.localizedString(.accountManagement))
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-            }
-            
-            // Delete account button
-            Button(action: {
-                showingDeleteAlert = true
-            }) {
-                HStack {
-                    Image(systemName: "trash")
-                        .font(.system(size: 16))
-                        .foregroundColor(.red)
-                    
-                    Text(localizationManager.localizedString(.deleteAccount))
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundColor(.red)
-                    
-                    Spacer()
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.red.opacity(0.1))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.red.opacity(0.3), lineWidth: 1)
-                        )
-                )
-            }
-            .disabled(isDeleting)
-            .alert(localizationManager.localizedString(.deleteAccountAlert), isPresented: $showingDeleteAlert) {
-                Button(localizationManager.localizedString(.cancel), role: .cancel) { }
-                Button(localizationManager.localizedString(.delete), role: .destructive) {
-                    Task {
-                        await deleteAccount()
-                    }
-                }
-            } message: {
-                Text(localizationManager.localizedString(.deleteAccountMessage))
-            }
-        }
-    }
-    
-    private func deleteAccount() async {
-        isDeleting = true
-        
-        do {
-            let userId = chatService.userId
-            let url = URL(string: "http://localhost:8000/user/\(userId)/delete")!
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "DELETE"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            if let httpResponse = response as? HTTPURLResponse {
-                if httpResponse.statusCode == 200 {
-                    // Successfully deleted account
-                    DispatchQueue.main.async {
-                        // Clear local data
-                        chatService.clearAllData()
-                        
-                        // Show success message (you might want to add a success alert here)
-                        print("Account deleted successfully")
-                    }
-                } else {
-                    print("Failed to delete account: HTTP \(httpResponse.statusCode)")
-                }
-            }
-        } catch {
-            print("Error deleting account: \(error)")
-        }
-        
-        isDeleting = false
-    }
-}
-
 #Preview {
-    HomeView(chatService: ChatService())
+    HomeView(chatService: ChatService(), showingSettings: .constant(false))
 } 

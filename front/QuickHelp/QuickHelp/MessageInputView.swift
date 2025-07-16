@@ -7,6 +7,7 @@ struct MessageInputView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     @State private var isExpanded = false
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +25,8 @@ struct MessageInputView: View {
                     )
                     .lineLimit(1...4)
                     .disabled(isLoading)
+                    .focused($isTextFieldFocused)
+                    .submitLabel(.done)
                     .onChange(of: text) { newValue in
                         withAnimation(.easeInOut(duration: 0.2)) {
                             isExpanded = newValue.count > 0
@@ -32,6 +35,11 @@ struct MessageInputView: View {
                     .onSubmit {
                         if canSend {
                             onSend()
+                            // Hide keyboard after sending
+                            isTextFieldFocused = false
+                        } else {
+                            // If can't send, just hide keyboard
+                            isTextFieldFocused = false
                         }
                     }
                 
@@ -39,6 +47,8 @@ struct MessageInputView: View {
                 Button(action: {
                     withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                         onSend()
+                        // Hide keyboard after sending
+                        isTextFieldFocused = false
                     }
                 }) {
                     Image(systemName: "arrow.up.circle.fill")
@@ -55,6 +65,10 @@ struct MessageInputView: View {
         .background(Color(.systemBackground))
         .safeAreaInset(edge: .bottom) {
             Color.clear.frame(height: 0)
+        }
+        // Add tap gesture to dismiss keyboard when tapping outside
+        .onTapGesture {
+            KeyboardManager.dismissKeyboard()
         }
     }
     

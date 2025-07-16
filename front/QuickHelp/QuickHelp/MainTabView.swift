@@ -4,10 +4,11 @@ struct MainTabView: View {
     @State private var selectedTab = 0
     @StateObject private var chatService = ChatService()
     @ObservedObject private var localizationManager = LocalizationManager.shared
+    @State private var showingSettings = false
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView(chatService: chatService)
+            HomeView(chatService: chatService, showingSettings: $showingSettings)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text(localizationManager.localizedString(.home))
@@ -22,6 +23,9 @@ struct MainTabView: View {
                 .tag(1)
         }
         .accentColor(.blue)
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(chatService: chatService)
+        }
     }
 }
 

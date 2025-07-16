@@ -33,6 +33,13 @@ class ContentService: ObservableObject {
         loadCachedInitialContent()
         loadCachedLanguage()
         
+        // Sync with LocalizationManager
+        let localizationManager = LocalizationManager.shared
+        if currentLanguage != localizationManager.currentLanguage {
+            currentLanguage = localizationManager.currentLanguage
+            userDefaults.set(currentLanguage.rawValue, forKey: languageKey)
+        }
+        
         // Fetch fresh content after a short delay to avoid loading state on launch
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             Task {
@@ -110,10 +117,23 @@ class ContentService: ObservableObject {
         currentLanguage = language
         userDefaults.set(language.rawValue, forKey: languageKey)
         
-        // Refresh content with new language - only fetch initial content which includes everything
+        // Refresh content with new language
         Task {
-            await fetchInitialContent()
+            // If we have a current topic, refresh content for that topic
+            // Otherwise, fetch initial content
+            if let currentTopic = getCurrentTopic() {
+                await loadContentForTopic(currentTopic)
+            } else {
+                await fetchInitialContent()
+            }
         }
+    }
+    
+    // Helper method to get current topic from ChatService
+    private func getCurrentTopic() -> String? {
+        // This is a simple approach - in a real app you might want to inject ChatService
+        // For now, we'll rely on the fact that HomeView handles topic changes
+        return nil
     }
     
     private func loadCachedLanguage() {

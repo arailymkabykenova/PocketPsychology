@@ -234,7 +234,8 @@ struct Article: Codable, Identifiable {
     }
     
     var category: String {
-        return topic ?? sourceTopics?.first ?? "Общее"
+        let localizationManager = LocalizationManager.shared
+        return topic ?? sourceTopics?.first ?? localizationManager.localizedString(.article)
     }
     
     // Новые computed properties для отображения подхода
@@ -248,7 +249,7 @@ struct Article: Codable, Identifiable {
         case "motivational":
             return localizationManager.localizedString(.motivationalArticle)
         default:
-            return localizationManager.currentLanguage == .russian ? "Статья" : "Article"
+            return localizationManager.localizedString(.article)
         }
     }
     

@@ -12,16 +12,16 @@ struct MessageBubbleView: View {
                 messageContent
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(Color.blue)
+                            .fill(Color.userMessageBackground)
                     )
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.userMessageText)
             } else {
                 messageContent
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(Color(.systemGray6))
+                            .fill(Color.assistantMessageBackground)
                     )
-                    .foregroundColor(.primary)
+                    .foregroundColor(Color.assistantMessageText)
                 Spacer(minLength: 60)
             }
         }
@@ -36,11 +36,15 @@ struct MessageBubbleView: View {
     
     private var messageContent: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Message text
-            Text(message.content)
-                .font(.body)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
+            // Message text - use MarkdownRenderer for AI messages
+            if message.isUser {
+                Text(message.content)
+                    .font(.body)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                SimpleMarkdownRenderer(message.content, textColor: Color.assistantMessageText)
+            }
             
             // Message metadata
             HStack {

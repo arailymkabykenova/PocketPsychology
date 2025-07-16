@@ -61,7 +61,29 @@ enum LocalizationKey {
     case generatingContent
     case generatingContentForTopic
     case analyzing
-
+    case loading
+    case noArticles
+    case noVideos
+    case articlesWillAppear
+    case videosWillAppear
+    case newQuote
+    case defaultQuote
+    case defaultQuoteAuthor
+    case welcomeMessage
+    case threeConversationModes
+    case personalizedTopics
+    case helpfulArticles
+    case currentTopic
+    case close
+    case article
+    case forTopic
+    case sourceTopics
+    case settings
+    case appearance
+    case selectTheme
+    case account
+    case deleteAccountWarning
+    case deleteAccountConfirmation
     
     var russian: String {
         switch self {
@@ -129,6 +151,52 @@ enum LocalizationKey {
             return "Генерирую контент..."
         case .analyzing:
             return "Анализирую..."
+        case .loading:
+            return "Загрузка..."
+        case .noArticles:
+            return "Нет статей для отображения."
+        case .noVideos:
+            return "Нет видео для отображения."
+        case .articlesWillAppear:
+            return "Статьи скоро появятся."
+        case .videosWillAppear:
+            return "Видео скоро появятся."
+        case .newQuote:
+            return "Новая цитата"
+        case .defaultQuote:
+            return "Цитата дня"
+        case .defaultQuoteAuthor:
+            return "Автор"
+        case .welcomeMessage:
+            return "Добро пожаловать в QuickHelp! Начните общение в чате, чтобы я мог определить ваши интересы и подобрать персонализированный контент."
+        case .threeConversationModes:
+            return "Три режима общения"
+        case .personalizedTopics:
+            return "Персонализированные темы"
+        case .helpfulArticles:
+            return "Полезные статьи"
+        case .currentTopic:
+            return "Текущая тема:"
+        case .close:
+            return "Закрыть"
+        case .article:
+            return "Статья"
+        case .forTopic:
+            return "для темы"
+        case .sourceTopics:
+            return "Источники тем"
+        case .settings:
+            return "Настройки"
+        case .appearance:
+            return "Внешний вид"
+        case .selectTheme:
+            return "Выбрать тему"
+        case .account:
+            return "Аккаунт"
+        case .deleteAccountWarning:
+            return "Это действие удалит все ваши данные и историю чата. Это действие нельзя отменить."
+        case .deleteAccountConfirmation:
+            return "Вы уверены, что хотите удалить свой аккаунт? Это действие нельзя отменить."
         }
     }
     
@@ -198,6 +266,52 @@ enum LocalizationKey {
             return "Generating content..."
         case .analyzing:
             return "Analyzing..."
+        case .loading:
+            return "Loading..."
+        case .noArticles:
+            return "No articles to display."
+        case .noVideos:
+            return "No videos to display."
+        case .articlesWillAppear:
+            return "Articles will appear."
+        case .videosWillAppear:
+            return "Videos will appear."
+        case .newQuote:
+            return "New Quote"
+        case .defaultQuote:
+            return "Quote of the Day"
+        case .defaultQuoteAuthor:
+            return "Author"
+        case .welcomeMessage:
+            return "Welcome to QuickHelp! Start chatting to help me understand your interests and provide personalized content."
+        case .threeConversationModes:
+            return "Three conversation modes"
+        case .personalizedTopics:
+            return "Personalized topics"
+        case .helpfulArticles:
+            return "Helpful articles"
+        case .currentTopic:
+            return "Current topic:"
+        case .close:
+            return "Close"
+        case .article:
+            return "Article"
+        case .forTopic:
+            return "for topic"
+        case .sourceTopics:
+            return "Source Topics"
+        case .settings:
+            return "Settings"
+        case .appearance:
+            return "Appearance"
+        case .selectTheme:
+            return "Select Theme"
+        case .account:
+            return "Account"
+        case .deleteAccountWarning:
+            return "This action will delete all your data and chat history. This action cannot be undone."
+        case .deleteAccountConfirmation:
+            return "Are you sure you want to delete your account? This action cannot be undone."
         }
     }
 } 
