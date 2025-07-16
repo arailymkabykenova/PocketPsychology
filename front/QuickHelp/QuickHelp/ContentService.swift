@@ -3,7 +3,7 @@ import Combine
 
 class ContentService: ObservableObject {
     // Backend URL - same as ChatService
-    private let baseURL = "http://localhost:8000"
+    private let baseURL = "https://pinkponys.org"
     
     @Published var isLoading = false
     @Published var errorMessage: String?

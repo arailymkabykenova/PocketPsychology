@@ -116,7 +116,7 @@ struct SettingsView: View {
         
         do {
             let userId = chatService.userId
-            let url = URL(string: "http://localhost:8000/user/\(userId)/delete")!
+            let url = URL(string: "https://pinkponys.org/user/\(userId)/delete")!
             
             var request = URLRequest(url: url)
             request.httpMethod = "DELETE"

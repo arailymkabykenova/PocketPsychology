@@ -10,9 +10,22 @@
 		412480DE2E2504C10017741C /* QuickHelp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuickHelp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		412A7E482E2809FB004508FA /* Exceptions for "QuickHelp" folder in "QuickHelp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 412480DD2E2504C10017741C /* QuickHelp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		412480E02E2504C10017741C /* QuickHelp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				412A7E482E2809FB004508FA /* Exceptions for "QuickHelp" folder in "QuickHelp" target */,
+			);
 			path = QuickHelp;
 			sourceTree = "<group>";
 		};
