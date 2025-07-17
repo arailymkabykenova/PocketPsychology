@@ -12,8 +12,7 @@ struct ModeSelectorView: View {
                 // Header
                 VStack(spacing: 8) {
                     Text(localizationManager.localizedString(.selectMode))
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                        .font(.sfProRoundedHeavy(size: 28))
                     
                     Text(localizationManager.localizedString(.selectModeSubtitle))
                         .font(.subheadline)
@@ -73,8 +72,7 @@ struct ModeOptionCard: View {
                 // Content
                 VStack(alignment: .leading, spacing: 4) {
                     Text(mode.displayName(for: language))
-                        .font(.headline)
-                        .fontWeight(.semibold)
+                        .font(.sfProRoundedHeavy(size: 20))
                         .foregroundColor(isSelected ? .white : .primary)
                     
                     Text(mode.description(for: language))

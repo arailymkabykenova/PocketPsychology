@@ -11,8 +11,7 @@ struct LanguageSelectorView: View {
                 // Header
                 VStack(spacing: 8) {
                     Text(localizationManager.localizedString(.chooseLanguage))
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                        .font(.sfProRoundedHeavy(size: 28))
                     
                     Text("Choose your preferred language")
                         .font(.body)
@@ -73,8 +72,7 @@ struct LanguageCardView: View {
                 // Content
                 VStack(alignment: .leading, spacing: 4) {
                     Text(language.displayName)
-                        .font(.headline)
-                        .fontWeight(.semibold)
+                        .font(.sfProRoundedSemibold(size: 20))
                         .foregroundColor(.primary)
                 }
                 

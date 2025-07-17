@@ -5,7 +5,7 @@ struct QuickHelpApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
-                .withDarkTheme()
+                .withColorTheme()
         }
     }
 } 

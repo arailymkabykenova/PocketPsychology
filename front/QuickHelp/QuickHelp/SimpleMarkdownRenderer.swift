@@ -25,13 +25,14 @@ struct SimpleMarkdownRenderer: View {
         switch element.type {
         case .text:
             parseInlineContent(element.content)
+                .font(.sfProRoundedSemibold(size: 17))
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineLimit(nil) // Allow unlimited lines
             
         case .bold:
             Text(element.content)
-                .font(.body)
+                .font(.sfProRoundedSemibold(size: 17))
                 .fontWeight(.bold)
                 .foregroundColor(textColor)
                 .multilineTextAlignment(.leading)
@@ -40,7 +41,7 @@ struct SimpleMarkdownRenderer: View {
             
         case .italic:
             Text(element.content)
-                .font(.body)
+                .font(.sfProRoundedSemibold(size: 17))
                 .italic()
                 .foregroundColor(textColor)
                 .multilineTextAlignment(.leading)
@@ -49,7 +50,7 @@ struct SimpleMarkdownRenderer: View {
             
         case .code:
             Text(element.content)
-                .font(.system(.body, design: .monospaced))
+                .font(.sfProRoundedSemibold(size: 17))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(
@@ -64,7 +65,7 @@ struct SimpleMarkdownRenderer: View {
         case .listItem:
             HStack(alignment: .top, spacing: 8) {
                 Text("•")
-                    .font(.body)
+                    .font(.sfProRoundedSemibold(size: 17))
                     .foregroundColor(textColor)
                     .padding(.top, 2)
                 
@@ -86,24 +87,24 @@ struct SimpleMarkdownRenderer: View {
                 switch element.type {
                 case .text:
                     Text(element.content)
-                        .font(.body)
+                        .font(.sfProRoundedSemibold(size: 17))
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
                 case .bold:
                     Text(element.content)
-                        .font(.body)
+                        .font(.sfProRoundedSemibold(size: 17))
                         .fontWeight(.bold)
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
                 case .italic:
                     Text(element.content)
-                        .font(.body)
+                        .font(.sfProRoundedSemibold(size: 17))
                         .italic()
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
                 case .code:
                     Text(element.content)
-                        .font(.system(.body, design: .monospaced))
+                        .font(.sfProRoundedSemibold(size: 17))
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(
@@ -114,7 +115,7 @@ struct SimpleMarkdownRenderer: View {
                         .fixedSize(horizontal: false, vertical: true)
                 case .listItem:
                     Text(element.content)
-                        .font(.body)
+                        .font(.sfProRoundedSemibold(size: 17))
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
                 }

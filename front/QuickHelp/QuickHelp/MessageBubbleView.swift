@@ -39,7 +39,7 @@ struct MessageBubbleView: View {
             // Message text - use MarkdownRenderer for AI messages
             if message.isUser {
                 Text(message.content)
-                    .font(.body)
+                    .font(.sfProRoundedSemibold(size: 17))
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(nil) // Allow unlimited lines

@@ -20,34 +20,32 @@ struct SettingsView: View {
                         HStack {
                             Image(systemName: "paintbrush")
                                 .font(.system(size: 16))
-                                .foregroundColor(Color.customAccent)
+                                .foregroundColor(Color.themeButton)
                                 .frame(width: 24)
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(localizationManager.localizedString(.selectTheme))
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(Color.customPrimaryText)
+                                    .font(.sfProRoundedSemibold(size: 17))
+                                    .foregroundColor(.primary)
                                 
-                                Text(themeManager.currentTheme.displayName)
-                                    .font(.caption)
-                                    .foregroundColor(Color.customSecondaryText)
+                                Text(themeManager.currentColorTheme.displayName)
+                                    .font(.sfProRoundedSemibold(size: 14))
+                                    .foregroundColor(.secondary)
                             }
                             
                             Spacer()
                             
                             Image(systemName: "chevron.right")
                                 .font(.caption)
-                                .foregroundColor(Color.customSecondaryText)
+                                .foregroundColor(.secondary)
                         }
                         .padding(.vertical, 4)
                     }
                     .buttonStyle(PlainButtonStyle())
                 } header: {
                     Text(localizationManager.localizedString(.appearance))
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(Color.customPrimaryText)
+                        .font(.sfProRoundedHeavy(size: 20))
+                        .foregroundColor(.primary)
                 }
                 
                 // Account Section
@@ -62,8 +60,7 @@ struct SettingsView: View {
                                 .frame(width: 24)
                             
                             Text(localizationManager.localizedString(.deleteAccount))
-                                .font(.body)
-                                .fontWeight(.medium)
+                                .font(.sfProRoundedSemibold(size: 17))
                                 .foregroundColor(.red)
                             
                             Spacer()
@@ -74,13 +71,12 @@ struct SettingsView: View {
                     .disabled(isDeleting)
                 } header: {
                     Text(localizationManager.localizedString(.account))
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(Color.customPrimaryText)
+                        .font(.sfProRoundedHeavy(size: 20))
+                        .foregroundColor(.primary)
                 } footer: {
                     Text(localizationManager.localizedString(.deleteAccountWarning))
-                        .font(.caption)
-                        .foregroundColor(Color.customSecondaryText)
+                        .font(.sfProRoundedSemibold(size: 14))
+                        .foregroundColor(.secondary)
                 }
             }
             .navigationTitle(localizationManager.localizedString(.settings))
@@ -95,7 +91,7 @@ struct SettingsView: View {
             }
         }
         .sheet(isPresented: $showingThemeSelector) {
-            ThemeSelectorView(selectedTheme: $themeManager.currentTheme)
+            ThemeSelectorView()
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }

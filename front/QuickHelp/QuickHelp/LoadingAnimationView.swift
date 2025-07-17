@@ -15,12 +15,12 @@ struct LoadingAnimationView: View {
                 // Animated icon
                 ZStack {
                     Circle()
-                        .fill(Color.customAccent.opacity(0.1))
+                        .fill(Color.themePrimary.opacity(0.1))
                         .frame(width: 80, height: 80)
                     
                     Image(systemName: "brain.head.profile")
                         .font(.system(size: 32))
-                        .foregroundColor(Color.customAccent)
+                        .foregroundColor(Color.themeIcon)
                         .scaleEffect(1.0 + 0.1 * sin(Double(animationPhase) * 0.5))
                         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: animationPhase)
                 }
@@ -28,12 +28,11 @@ struct LoadingAnimationView: View {
                 // Loading text
                 VStack(spacing: 8) {
                     Text(localizationManager.localizedString(.generatingContent))
-                        .font(.headline)
-                        .fontWeight(.semibold)
+                        .font(.sfProRoundedSemibold(size: 20))
                         .foregroundColor(.primary)
                     
                     Text("\(localizationManager.localizedString(.forTopic)) «\(topic)»")
-                        .font(.subheadline)
+                        .font(.sfProRoundedSemibold(size: 16))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -42,7 +41,7 @@ struct LoadingAnimationView: View {
                 HStack(spacing: 8) {
                     ForEach(0..<3, id: \.self) { index in
                         Circle()
-                            .fill(Color.customAccent)
+                            .fill(Color.themeButton)
                             .frame(width: 8, height: 8)
                             .opacity(dotOpacity[index])
                             .scaleEffect(dotOpacity[index] == 1.0 ? 1.2 : 1.0)
@@ -52,18 +51,18 @@ struct LoadingAnimationView: View {
                 
                 // Progress indicator
                 ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Color.customAccent))
+                    .progressViewStyle(CircularProgressViewStyle(tint: Color.themeButton))
                     .scaleEffect(0.8)
             }
             .padding(24)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.customCardBackground)
+                    .fill(Color.themeCardBackground)
                     .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.customBorder, lineWidth: 1)
+                    .stroke(Color.themeBorder, lineWidth: 1)
             )
         }
         .onReceive(timer) { _ in
@@ -101,12 +100,11 @@ struct CompactLoadingView: View {
             // Loading text
             VStack(alignment: .leading, spacing: 2) {
                 Text(localizationManager.localizedString(.generatingContent))
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                    .font(.sfProRoundedSemibold(size: 16))
                     .foregroundColor(.primary)
                 
                 Text("\(localizationManager.localizedString(.forTopic)) «\(topic)»")
-                    .font(.caption)
+                    .font(.sfProRoundedSemibold(size: 14))
                     .foregroundColor(.secondary)
             }
             

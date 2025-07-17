@@ -68,7 +68,7 @@ struct ChatView: View {
                     .padding(.bottom, 8)
                 }
             }
-            .background(Color.customCardBackground)
+            .background(Color.themeCardBackground)
             
             // Messages list
             ScrollViewReader { proxy in
@@ -114,7 +114,7 @@ struct ChatView: View {
                         }
                     }
                 }
-                .background(Color.customBackground)
+                .background(Color.themeBackground)
                 // Add tap gesture to dismiss keyboard when tapping on scroll view
                 .onTapGesture {
                     // This will dismiss the keyboard when tapping on the scroll view
@@ -207,7 +207,7 @@ struct ChatView: View {
         } message: {
             Text(localizationManager.localizedString(.clearHistoryMessage))
         }
-        .background(Color.customBackground)
+        .background(Color.themeBackground)
     }
     
     private var welcomeMessage: some View {
@@ -217,13 +217,12 @@ struct ChatView: View {
                 .foregroundColor(.blue.opacity(0.6))
             
             VStack(spacing: 8) {
-                Text(localizationManager.localizedString(.welcomeTitle))
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                Text("Chat")
+                    .font(.sfProRoundedHeavy(size: 42))
                     .multilineTextAlignment(.center)
                 
                 Text(localizationManager.localizedString(.welcomeSubtitle))
-                    .font(.body)
+                    .font(.subtitleLarge)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)

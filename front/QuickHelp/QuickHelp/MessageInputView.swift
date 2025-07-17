@@ -17,6 +17,7 @@ struct MessageInputView: View {
                 // Text input
                 TextField(localizationManager.localizedString(.enterMessage), text: $text, axis: .vertical)
                     .textFieldStyle(PlainTextFieldStyle())
+                    .font(.sfProRoundedSemibold(size: 17))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(

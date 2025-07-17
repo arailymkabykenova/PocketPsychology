@@ -84,6 +84,30 @@ enum LocalizationKey {
     case account
     case deleteAccountWarning
     case deleteAccountConfirmation
+    case currentTopicLabel
+    case quoteOfTheDaySubtitle
+    case articlesSectionTitle
+    case articlesSectionSubtitle
+    case videosSectionTitle
+    case videosSectionSubtitle
+    case whatYouGet
+    case loadingArticles
+    case loadingArticlesSubtitle
+    case articlesWillAppearHere
+    case articlesWillAppearSubtitle
+    case loadingVideos
+    case loadingVideosSubtitle
+    case videosWillAppearHere
+    case videosWillAppearSubtitle
+    case newQuoteButton
+    case keyPoints
+    case practicalSteps
+    case preview
+    case previewDescription
+    case exampleCard
+    case exampleCardDescription
+    case exampleButton
+    case watchVideo
     
     var russian: String {
         switch self {
@@ -197,6 +221,54 @@ enum LocalizationKey {
             return "Это действие удалит все ваши данные и историю чата. Это действие нельзя отменить."
         case .deleteAccountConfirmation:
             return "Вы уверены, что хотите удалить свой аккаунт? Это действие нельзя отменить."
+        case .currentTopicLabel:
+            return "Текущая тема"
+        case .quoteOfTheDaySubtitle:
+            return "Вдохновение для вашего дня"
+        case .articlesSectionTitle:
+            return "Статьи"
+        case .articlesSectionSubtitle:
+            return "Полезные материалы для самопомощи"
+        case .videosSectionTitle:
+            return "Видео"
+        case .videosSectionSubtitle:
+            return "Мотивационные и обучающие видео"
+        case .whatYouGet:
+            return "Что вы получите:"
+        case .loadingArticles:
+            return "Загружаем статьи..."
+        case .loadingArticlesSubtitle:
+            return "Подбираем лучшие материалы для вас"
+        case .articlesWillAppearHere:
+            return "Статьи появятся здесь"
+        case .articlesWillAppearSubtitle:
+            return "Начните чат, чтобы получить персонализированные материалы"
+        case .loadingVideos:
+            return "Загружаем видео..."
+        case .loadingVideosSubtitle:
+            return "Подбираем лучшие видео для вас"
+        case .videosWillAppearHere:
+            return "Видео появятся здесь"
+        case .videosWillAppearSubtitle:
+            return "Начните чат, чтобы получить персонализированные видео"
+        case .newQuoteButton:
+            return "Новая цитата"
+        case .keyPoints:
+            return "Ключевые моменты"
+        case .practicalSteps:
+            return "Практические шаги"
+        case .preview:
+            return "Предварительный просмотр"
+        case .previewDescription:
+            return "Это как будут выглядеть карточки"
+        case .exampleCard:
+            return "Пример карточки"
+        case .exampleCardDescription:
+            return "Это как будут выглядеть карточки"
+        case .exampleButton:
+            return "Пример кнопки"
+        case .watchVideo:
+            return "Смотреть"
         }
     }
     
@@ -312,6 +384,54 @@ enum LocalizationKey {
             return "This action will delete all your data and chat history. This action cannot be undone."
         case .deleteAccountConfirmation:
             return "Are you sure you want to delete your account? This action cannot be undone."
+        case .currentTopicLabel:
+            return "Current Topic"
+        case .quoteOfTheDaySubtitle:
+            return "Inspiration for your day"
+        case .articlesSectionTitle:
+            return "Articles"
+        case .articlesSectionSubtitle:
+            return "Helpful self-help materials"
+        case .videosSectionTitle:
+            return "Videos"
+        case .videosSectionSubtitle:
+            return "Motivational and educational videos"
+        case .whatYouGet:
+            return "What you'll get:"
+        case .loadingArticles:
+            return "Loading articles..."
+        case .loadingArticlesSubtitle:
+            return "Finding the best materials for you"
+        case .articlesWillAppearHere:
+            return "Articles will appear here"
+        case .articlesWillAppearSubtitle:
+            return "Start chatting to get personalized materials"
+        case .loadingVideos:
+            return "Loading videos..."
+        case .loadingVideosSubtitle:
+            return "Finding the best videos for you"
+        case .videosWillAppearHere:
+            return "Videos will appear here"
+        case .videosWillAppearSubtitle:
+            return "Start chatting to get personalized videos"
+        case .newQuoteButton:
+            return "New Quote"
+        case .keyPoints:
+            return "Key Points"
+        case .practicalSteps:
+            return "Practical Steps"
+        case .preview:
+            return "Preview"
+        case .previewDescription:
+            return "This is how cards will look"
+        case .exampleCard:
+            return "Example Card"
+        case .exampleCardDescription:
+            return "This is how cards will look"
+        case .exampleButton:
+            return "Example Button"
+        case .watchVideo:
+            return "Watch"
         }
     }
 } 

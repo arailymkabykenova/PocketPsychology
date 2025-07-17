@@ -31,10 +31,21 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                let _ = print("🏠 HomeView: Rendering with topic='\(chatService.currentTopic ?? "nil")', articles=\(contentService.articles.count), videos=\(contentService.videos.count)")
+        
+                
+                // Background gradient
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.themeBackground,
+                        Color.themeBackground.opacity(0.8)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 32) {
                         // Welcome message for new users (only show if no topic yet)
                         if chatService.currentTopic == nil && !contentService.isInitialContentLoaded {
                             WelcomeCard(message: localizationManager.localizedString(.welcomeMessage))
@@ -58,37 +69,22 @@ struct HomeView: View {
                             GeneralContentSection(contentService: contentService)
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    .padding(.bottom, 32)
-                            }
-            .background(Color.customBackground)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
+                }
                 .navigationTitle("QuickHelp")
                 .navigationBarTitleDisplayMode(.large)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbarBackground(Color.themeBackground, for: .navigationBar)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: {
-                            Task {
-                                if let topic = chatService.currentTopic {
-                                    await contentService.loadContentForTopic(topic)
-                                } else {
-                                    await contentService.forceContentRefresh()
-                                }
-                            }
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.blue)
-                        }
-                    }
-                    
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
                             showingSettings = true
                         }) {
                             Image(systemName: "gearshape.fill")
                                 .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.blue)
+                                .foregroundColor(Color.themeButton)
                         }
                     }
                 }
@@ -104,7 +100,7 @@ struct HomeView: View {
             .refreshable {
                 // Pull to refresh - only refresh content, don't change topic
                 if let topic = chatService.currentTopic {
-                    print("🔄 HomeView: Pull-to-refresh - refreshing content for topic: '\(topic)'")
+                    
                     // Set loading state
                     await MainActor.run {
                         chatService.isGeneratingContentForTopic = true
@@ -117,7 +113,7 @@ struct HomeView: View {
                         chatService.isGeneratingContentForTopic = false
                     }
                 } else {
-                    print("🔄 HomeView: Pull-to-refresh - no topic, loading initial content")
+
                     await contentService.fetchInitialContent()
                 }
                 
@@ -125,7 +121,7 @@ struct HomeView: View {
                 // If you need to refresh topic, do it separately
             }
             .onChange(of: currentLanguage) { newLanguage in
-                print("🏠 HomeView: Language changed to \(newLanguage.rawValue)")
+
                 
                 // Force topic refresh when language changes
                 chatService.forceTopicRefresh()
@@ -134,12 +130,12 @@ struct HomeView: View {
                 contentService.setLanguage(newLanguage)
             }
             .onChange(of: chatService.currentTopic) { newTopic in
-                print("🏠 HomeView: Topic changed to '\(newTopic ?? "nil")'")
+
                 
                 // Refresh content when topic changes
                 if let topic = newTopic {
                     Task {
-                        print("🏠 HomeView: Starting to load content for topic '\(topic)'")
+        
                         // Set loading state
                         await MainActor.run {
                             chatService.isGeneratingContentForTopic = true
@@ -151,12 +147,12 @@ struct HomeView: View {
                         await MainActor.run {
                             chatService.isGeneratingContentForTopic = false
                         }
-                        print("🏠 HomeView: Finished loading content for topic '\(topic)'")
+
                     }
                 } else {
                     // If topic is cleared, load initial random content
                     Task {
-                        print("🏠 HomeView: Loading initial random content")
+    
                         await contentService.fetchInitialContent()
                     }
                 }
@@ -171,11 +167,9 @@ struct HomeView: View {
                 }
             }
             .onAppear {
-                print("🏠 HomeView: onAppear called")
-                
                 // Load content if user has a topic
                 if let topic = chatService.currentTopic {
-                    print("🏠 HomeView: onAppear - Loading content for existing topic '\(topic)'")
+
                     Task {
                         // Set loading state only if no content is loaded yet
                         if contentService.articles.isEmpty && contentService.videos.isEmpty && contentService.dailyQuote == nil {
@@ -192,7 +186,7 @@ struct HomeView: View {
                         }
                     }
                 } else {
-                    print("🏠 HomeView: onAppear - No topic, loading initial random content")
+
                     Task {
                         await contentService.fetchInitialContent()
                     }
@@ -250,47 +244,87 @@ struct WelcomeCard: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Main icon and title
-            VStack(spacing: 12) {
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 48))
-                    .foregroundColor(.blue)
+        VStack(spacing: 0) {
+            // Header with gradient
+            VStack(spacing: 20) {
+                // Main icon with gradient background
+                ZStack {
+                    Circle()
+                        .fill(
+                                                    LinearGradient(
+                            gradient: Gradient(colors: [Color.themePrimary.opacity(0.2), Color.themeSecondary.opacity(0.2)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        )
+                        .frame(width: 80, height: 80)
+                    
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 36, weight: .medium))
+                        .foregroundColor(.blue)
+                }
                 
-                Text(localizationManager.localizedString(.welcomeMessage))
-                    .font(.title2)
-                    .fontWeight(.bold)
+                VStack(spacing: 8) {
+                    Text(localizationManager.currentLanguage == .russian ? "Добро пожаловать в" : "Welcome to")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Quick Help")    
+                        .font(.sfProRoundedHeavy(size: 42))
+                        .foregroundColor(.primary)
+                }
+                
+                Text(message)
+                    .font(.body)
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .padding(.horizontal, 8)
             }
-            
-            // Message
-            Text(message)
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(nil)
-            
-            // Features list
-            VStack(alignment: .leading, spacing: 8) {
-                FeatureRow(icon: "message.circle.fill", 
-                          text: localizationManager.localizedString(.threeConversationModes))
-                FeatureRow(icon: "lightbulb.fill", 
-                          text: localizationManager.localizedString(.personalizedTopics))
-                FeatureRow(icon: "doc.text.fill", 
-                          text: localizationManager.localizedString(.helpfulArticles))
-                FeatureRow(icon: "play.circle.fill", 
-                          text: localizationManager.localizedString(.motivationalVideos))
-            }
-            .padding(.top, 8)
-        }
-        .padding(24)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.customCardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.customBorder, lineWidth: 1)
+            .padding(.top, 32)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.themePrimary.opacity(0.05),
+                        Color.themeSecondary.opacity(0.03)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
+            )
+            
+            // Features section
+            VStack(spacing: 16) {
+                                        Text(localizationManager.localizedString(.whatYouGet))
+                            .font(.sfProRoundedHeavy(size: 22))
+                            .foregroundColor(.primary)
+                            .padding(.top, 8)
+                
+                VStack(spacing: 12) {
+                    FeatureRow(icon: "message.circle.fill", 
+                              text: localizationManager.localizedString(.threeConversationModes),
+                              color: .blue)
+                    FeatureRow(icon: "lightbulb.fill", 
+                              text: localizationManager.localizedString(.personalizedTopics),
+                              color: .orange)
+                    FeatureRow(icon: "doc.text.fill", 
+                              text: localizationManager.localizedString(.helpfulArticles),
+                              color: .green)
+                    FeatureRow(icon: "play.circle.fill", 
+                              text: localizationManager.localizedString(.motivationalVideos),
+                              color: .purple)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color.themeCardBackground)
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
         )
     }
 }
@@ -299,20 +333,32 @@ struct WelcomeCard: View {
 struct FeatureRow: View {
     let icon: String
     let text: String
+    let color: Color
     
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(.blue)
-                .frame(width: 20)
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.1))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(color)
+            }
             
             Text(text)
-                .font(.subheadline)
+                .font(.body)
+                .fontWeight(.medium)
                 .foregroundColor(.primary)
             
             Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
+        .padding(.vertical, 4)
     }
 }
 
@@ -323,61 +369,72 @@ struct CurrentTopicCard: View {
     @ObservedObject private var chatService = ChatService()
     
     var body: some View {
-        HStack {
-            Image(systemName: "lightbulb.fill")
-                .font(.title2)
-                .foregroundColor(.yellow)
+        HStack(spacing: 20) {
+            // Icon with gradient background
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.themePrimary.opacity(0.2), Color.themeSecondary.opacity(0.2)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 60, height: 60)
+                
+                Image(systemName: "lightbulb.fill")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundColor(Color.themeIcon)
+            }
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(localizationManager.currentLanguage == .russian ? "Текущая тема:" : "Current topic:")
+            VStack(alignment: .leading, spacing: 8) {
+                Text(localizationManager.localizedString(.currentTopicLabel))
                     .font(.caption)
+                    .fontWeight(.medium)
                     .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
                 
                 if chatService.isGeneratingContent {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 8) {
                         ProgressView()
                             .scaleEffect(0.8)
                         Text(localizationManager.localizedString(.analyzing))
-                            .font(.headline)
-                            .fontWeight(.semibold)
+                            .font(.headlineMedium)
                             .foregroundColor(.primary)
                     }
                 } else if chatService.isGeneratingContentForTopic {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 8) {
                         ProgressView()
                             .scaleEffect(0.8)
                         Text(localizationManager.localizedString(.generatingContentForTopic))
-                            .font(.headline)
-                            .fontWeight(.semibold)
+                            .font(.headlineMedium)
                             .foregroundColor(.primary)
                     }
                 } else {
-                    HStack {
-                        Text(localizationManager.localizedString(.currentTopic))
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                        
-                        Text(topic.capitalized)
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
-                        
-                        Spacer()
-                    }
+                    Text(topic.capitalized)
+                        .font(.sfProRoundedHeavy(size: 18))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             
             Spacer()
+            
+            // Status indicator
+            if !chatService.isGeneratingContent && !chatService.isGeneratingContentForTopic {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(Color.themeButton)
+            }
         }
-        .padding(16)
+        .padding(24)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 20)
                 .fill(Color.customCardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.customBorder, lineWidth: 1)
-                )
+                .shadow(color: Color.black.opacity(0.06), radius: 15, x: 0, y: 8)
         )
     }
 }
@@ -389,40 +446,85 @@ struct QuoteOfTheDayCard: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Section header
-            HStack {
-                Text(localizationManager.localizedString(.quoteOfTheDay))
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-            }
-            
-            // Quote content
-            VStack(spacing: 16) {
-                // Quote icon
-                Image(systemName: "quote.bubble.fill")
-                    .font(.system(size: 32))
-                    .foregroundColor(.blue.opacity(0.7))
-                
-                if isLoading {
-                    // Loading state
-                    ProgressView()
-                        .scaleEffect(1.2)
-                } else if let quote = quote {
-                    // Quote content
-                    VStack(spacing: 12) {
-                        Text(quote.text)
-                            .font(.title2)
-                            .fontWeight(.medium)
-                            .multilineTextAlignment(.center)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header section
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(localizationManager.localizedString(.quoteOfTheDay))
+                            .font(.headlineLarge)
                             .foregroundColor(.primary)
                         
-                        Text("— \(quote.author)")
+                        Text(localizationManager.localizedString(.quoteOfTheDaySubtitle))
+                            .font(.subtitleSmall)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    // Quote icon with gradient
+                    ZStack {
+                        Circle()
+                            .fill(
+                                                        LinearGradient(
+                            gradient: Gradient(colors: [Color.themePrimary.opacity(0.2), Color.themeSecondary.opacity(0.2)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                            )
+                            .frame(width: 50, height: 50)
+                        
+                        Image(systemName: "quote.bubble.fill")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(Color.themeIcon)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            .padding(.bottom, 20)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.themePrimary.opacity(0.05),
+                        Color.clear
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            
+            // Quote content section
+            VStack(spacing: 20) {
+                if isLoading {
+                    // Loading state
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text(localizationManager.localizedString(.loading))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                            .italic()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                } else if let quote = quote {
+                    // Quote content
+                    VStack(spacing: 16) {
+                        Text(quote.text)
+                            .font(.sfProRoundedSemibold(size: 20))
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.primary)
+                            .lineSpacing(6)
+                            .padding(.horizontal, 8)
+                        
+                        HStack {
+                            Text("— \(quote.author)")
+                                .font(.sfProRoundedSemibold(size: 16))
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, 8)
                         
                         // Generate new quote button
                         Button(action: {
@@ -432,49 +534,60 @@ struct QuoteOfTheDayCard: View {
                                 }
                             }
                         }) {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 8) {
                                 Image(systemName: "sparkles")
                                     .font(.caption)
-                                Text(localizationManager.localizedString(.newQuote))
+                                Text(localizationManager.localizedString(.newQuoteButton))
                                     .font(.caption)
                                     .fontWeight(.medium)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(Color.blue.opacity(0.1))
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.themeButton.opacity(0.2),
+                                                Color.themeSecondary.opacity(0.1)
+                                            ]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                             )
-                            .foregroundColor(.blue)
+                            .foregroundColor(Color.themeButton)
                         }
                     }
                 } else {
                     // Fallback content
-                    VStack(spacing: 12) {
+                    VStack(spacing: 16) {
                         Text(localizationManager.localizedString(.defaultQuote))
-                            .font(.title2)
+                            .font(.title3)
                             .fontWeight(.medium)
                             .multilineTextAlignment(.center)
                             .foregroundColor(.primary)
+                            .lineSpacing(6)
                         
-                        Text("— \(localizationManager.localizedString(.defaultQuoteAuthor))")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .italic()
+                        HStack {
+                            Text("— \(localizationManager.localizedString(.defaultQuoteAuthor))")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                        }
                     }
                 }
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
         }
-        .padding(24)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.customCardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.customBorder, lineWidth: 1)
-                )
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color.themeCardBackground)
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
         )
-        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
     }
 }
 
@@ -489,43 +602,90 @@ struct ArticlesSection: View {
             let _ = print("📄 ArticlesSection: articles.count=\(articles.count), isLoading=\(isLoading)")
             
             // Section header
-            HStack {
-                Text(localizationManager.localizedString(.selfHelpArticles))
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Spacer()
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(localizationManager.localizedString(.articlesSectionTitle))
+                            .font(.sfProRoundedHeavy(size: 24))
+                            .foregroundColor(.primary)
+                        
+                        Text(localizationManager.localizedString(.articlesSectionSubtitle))
+                            .font(.sfProRoundedSemibold(size: 16))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    // Section icon
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.green.opacity(0.2), Color.blue.opacity(0.2)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 40, height: 40)
+                        
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.green)
+                    }
+                }
             }
             
             if isLoading {
                 // Loading state
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text(localizationManager.localizedString(.loading))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 20)
-            } else if articles.isEmpty {
-                // Empty state
-                VStack(spacing: 12) {
-                    Image(systemName: "doc.text")
-                        .font(.system(size: 40))
-                        .foregroundColor(.gray.opacity(0.5))
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.1))
+                            .frame(width: 80, height: 80)
+                        
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .green))
+                    }
                     
-                    Text(localizationManager.localizedString(.noArticles))
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    Text(localizationManager.localizedString(.articlesWillAppear))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 8) {
+                        Text(localizationManager.localizedString(.loadingArticles))
+                            .font(.sfProRoundedSemibold(size: 20))
+                            .foregroundColor(.primary)
+                        
+                        Text(localizationManager.localizedString(.loadingArticlesSubtitle))
+                            .font(.sfProRoundedSemibold(size: 16))
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
+                .padding(.vertical, 60)
+            } else if articles.isEmpty {
+                // Empty state
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.1))
+                            .frame(width: 80, height: 80)
+                        
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundColor(.green)
+                    }
+                    
+                    VStack(spacing: 8) {
+                        Text(localizationManager.localizedString(.articlesWillAppearHere))
+                            .font(.sfProRoundedSemibold(size: 20))
+                            .foregroundColor(.primary)
+                        
+                        Text(localizationManager.localizedString(.articlesWillAppearSubtitle))
+                            .font(.sfProRoundedSemibold(size: 16))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 60)
             } else {
                 // Articles list
                 LazyVStack(spacing: 12) {
@@ -548,74 +708,102 @@ struct ArticleCard: View {
         Button(action: {
             showingArticleDetail = true
         }) {
-            HStack(spacing: 16) {
-                // Article icon with approach color
-                VStack {
-                    Image(systemName: article.approachIcon)
-                        .font(.system(size: 24))
-                        .foregroundColor(article.approachColor)
-                }
-                .frame(width: 50, height: 50)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(article.approachColor.opacity(0.1))
-                )
-                
-                // Article content
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(article.title)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Text(article.description)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                    
-                    HStack {
-                        // Approach badge
-                        Text(article.approachDisplayName)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(article.approachColor.opacity(0.1))
+            VStack(alignment: .leading, spacing: 0) {
+                // Header with gradient
+                HStack(spacing: 16) {
+                    // Article icon with gradient background
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        article.approachColor.opacity(0.2),
+                                        article.approachColor.opacity(0.1)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
+                            .frame(width: 60, height: 60)
+                        
+                        Image(systemName: article.approachIcon)
+                            .font(.system(size: 24, weight: .medium))
                             .foregroundColor(article.approachColor)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(article.title)
+                            .font(.sfProRoundedSemibold(size: 20))
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                         
-                        // Topic badge
-                        Text(article.category)
+                        HStack(spacing: 8) {
+                            // Approach badge
+                            Text(article.approachDisplayName)
+                                .font(.sfProRoundedSemibold(size: 14))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(article.approachColor.opacity(0.15))
+                                )
+                                .foregroundColor(article.approachColor)
+                            
+                            // Topic badge
+                            Text(article.category)
+                                .font(.sfProRoundedSemibold(size: 14))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.green.opacity(0.15))
+                                )
+                                .foregroundColor(.green)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Image(systemName: "chevron.right")
                             .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color.green.opacity(0.1))
-                            )
-                            .foregroundColor(.green)
-                        
-                        Spacer()
+                            .foregroundColor(.secondary)
                         
                         Text(article.readTime)
-                            .font(.caption)
+                            .font(.sfProRoundedSemibold(size: 14))
                             .foregroundColor(.secondary)
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            article.approachColor.opacity(0.03),
+                            Color.clear
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // Description
+                if !article.description.isEmpty {
+                    Text(article.description)
+                        .font(.sfProRoundedSemibold(size: 16))
+                        .foregroundColor(.secondary)
+                        .lineLimit(3)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+                }
             }
-            .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.customCardBackground)
+                    .shadow(color: Color.black.opacity(0.06), radius: 15, x: 0, y: 8)
             )
-            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingArticleDetail) {
@@ -631,55 +819,140 @@ struct VideosSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            let _ = print("🎥 VideosSection: videos.count=\(videos.count), isLoading=\(isLoading)")
+
             
             // Section header
-            HStack {
-                Text(localizationManager.localizedString(.motivationalVideos))
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Spacer()
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(localizationManager.localizedString(.videosSectionTitle))
+                            .font(.sfProRoundedHeavy(size: 24))
+                            .foregroundColor(.primary)
+                        
+                        Text(localizationManager.localizedString(.videosSectionSubtitle))
+                            .font(.sfProRoundedSemibold(size: 16))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    // Section icon
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.red.opacity(0.2), Color.orange.opacity(0.2)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 40, height: 40)
+                        
+                        Image(systemName: "play.rectangle.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.red)
+                    }
+                }
             }
             
             if isLoading {
                 // Loading state
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text(localizationManager.localizedString(.loading))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 20)
-            } else if videos.isEmpty {
-                // Empty state
-                VStack(spacing: 12) {
-                    Image(systemName: "play.rectangle")
-                        .font(.system(size: 40))
-                        .foregroundColor(.gray.opacity(0.5))
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.red.opacity(0.1))
+                            .frame(width: 80, height: 80)
+                        
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .red))
+                    }
                     
-                    Text(localizationManager.localizedString(.noVideos))
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    Text(localizationManager.localizedString(.videosWillAppear))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-            } else {
-                // Videos list
-                LazyVStack(spacing: 12) {
-                    ForEach(videos.prefix(3), id: \.id) { video in
-                        VideoCard(video: video)
+                    VStack(spacing: 8) {
+                        Text(localizationManager.localizedString(.loadingVideos))
+                            .font(.sfProRoundedSemibold(size: 20))
+                            .foregroundColor(.primary)
+                        
+                        Text(localizationManager.localizedString(.loadingVideosSubtitle))
+                            .font(.sfProRoundedSemibold(size: 16))
+                            .foregroundColor(.secondary)
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 60)
+            } else if videos.isEmpty {
+                // Empty state
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.red.opacity(0.1))
+                            .frame(width: 80, height: 80)
+                        
+                        Image(systemName: "play.rectangle")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundColor(.red)
+                    }
+                    
+                    VStack(spacing: 8) {
+                        Text(localizationManager.localizedString(.videosWillAppearHere))
+                            .font(.sfProRoundedSemibold(size: 20))
+                            .foregroundColor(.primary)
+                        
+                        Text(localizationManager.localizedString(.videosWillAppearSubtitle))
+                            .font(.sfProRoundedSemibold(size: 16))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 60)
+            } else {
+                // Videos carousel with centered scaling effect
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
+                            GeometryReader { geometry in
+                                VideoCarouselCard(video: video)
+                                    .frame(width: 280)
+                                    .scaleEffect(getScale(for: geometry))
+                                    .opacity(getOpacity(for: geometry))
+                                    .animation(.easeInOut(duration: 0.3), value: geometry.frame(in: .global).minX)
+                            }
+                            .frame(width: 280)
+                        }
+                    }
+                    .padding(.horizontal, UIScreen.main.bounds.width / 2 - 140) // Center the first card
+                    .padding(.vertical, 8)
+                }
+                .frame(height: 400) // Fixed height for the carousel
             }
         }
+    }
+    
+    // MARK: - Carousel Helper Functions
+    
+    private func getScale(for geometry: GeometryProxy) -> CGFloat {
+        let screenWidth = UIScreen.main.bounds.width
+        let centerX = screenWidth / 2
+        let cardCenterX = geometry.frame(in: .global).midX
+        let distanceFromCenter = abs(cardCenterX - centerX)
+        let maxDistance = screenWidth / 2
+        
+        // Scale from 0.85 to 1.0 based on distance from center
+        let scale = 1.0 - (distanceFromCenter / maxDistance) * 0.15
+        return max(0.85, min(1.0, scale))
+    }
+    
+    private func getOpacity(for geometry: GeometryProxy) -> Double {
+        let screenWidth = UIScreen.main.bounds.width
+        let centerX = screenWidth / 2
+        let cardCenterX = geometry.frame(in: .global).midX
+        let distanceFromCenter = abs(cardCenterX - centerX)
+        let maxDistance = screenWidth / 2
+        
+        // Opacity from 0.7 to 1.0 based on distance from center
+        let opacity = 1.0 - (distanceFromCenter / maxDistance) * 0.3
+        return max(0.7, min(1.0, opacity))
     }
 }
 
@@ -688,23 +961,61 @@ struct VideoCard: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
-        HStack(spacing: 16) {
-            // Video thumbnail
-            AsyncImage(url: URL(string: video.thumbnail)) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .overlay(
+        VStack(alignment: .leading, spacing: 0) {
+            // Video thumbnail with play button overlay
+            ZStack(alignment: .center) {
+                AsyncImage(url: URL(string: video.thumbnail)) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.1)]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Image(systemName: "play.rectangle")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white.opacity(0.8))
+                        )
+                }
+                .frame(height: 160)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                
+                // Play button overlay
+                Button(action: {
+                    // Open YouTube video
+                    let videoUrl: String
+                    if let url = video.url {
+                        videoUrl = url
+                    } else {
+                        videoUrl = "https://www.youtube.com/watch?v=\(video.videoId)"
+                    }
+                    
+                    if let url = URL(string: videoUrl) {
+                        UIApplication.shared.open(url) { success in
+                            if !success {
+                                print("Failed to open YouTube video: \(video.videoId)")
+                            }
+                        }
+                    }
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.9))
+                            .frame(width: 60, height: 60)
+                            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+                        
                         Image(systemName: "play.fill")
                             .font(.title2)
-                            .foregroundColor(.white)
-                    )
+                            .foregroundColor(.red)
+                    }
+                }
             }
-            .frame(width: 80, height: 60)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
             .onAppear {
                 // Validate thumbnail URL
                 if let url = URL(string: video.thumbnail) {
@@ -715,56 +1026,227 @@ struct VideoCard: View {
             }
             
             // Video content
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(video.title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
+                    .font(.sfProRoundedSemibold(size: 20))
                     .foregroundColor(.primary)
                     .lineLimit(2)
-                
-                Text(video.channel)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
                 
                 HStack {
-                    Text(video.formattedDurationString)
-                        .font(.caption)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(video.channel)
+                            .font(.sfProRoundedSemibold(size: 16))
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 8) {
+                            Image(systemName: "clock")
+                                .font(.caption)
+                            Text(video.formattedDurationString)
+                                .font(.sfProRoundedSemibold(size: 14))
+                        }
                         .foregroundColor(.secondary)
+                    }
                     
                     Spacer()
                     
-                    Button(action: {
-                        // Open YouTube video
-                        let videoUrl: String
-                        if let url = video.url {
-                            videoUrl = url
-                        } else {
-                            videoUrl = "https://www.youtube.com/watch?v=\(video.videoId)"
-                        }
-                        
-                        if let url = URL(string: videoUrl) {
-                            UIApplication.shared.open(url) { success in
-                                if !success {
-                                    print("Failed to open YouTube video: \(video.videoId)")
-                                }
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.title3)
+                        .foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 20)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.themeCardBackground)
+                .shadow(color: Color.black.opacity(0.06), radius: 15, x: 0, y: 8)
+        )
+    }
+}
+
+struct VideoCarouselCard: View {
+    let video: Video
+    @ObservedObject private var localizationManager = LocalizationManager.shared
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Video thumbnail with gradient overlay and play button
+            ZStack(alignment: .center) {
+                AsyncImage(url: URL(string: video.thumbnail)) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.themePrimary.opacity(0.3),
+                                    Color.themeSecondary.opacity(0.1)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Image(systemName: "play.rectangle")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white.opacity(0.8))
+                        )
+                }
+                .frame(height: 180)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                
+                // Gradient overlay
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.clear,
+                        Color.black.opacity(0.3)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                
+                // Play button overlay
+                Button(action: {
+                    // Open YouTube video
+                    let videoUrl: String
+                    if let url = video.url {
+                        videoUrl = url
+                    } else {
+                        videoUrl = "https://www.youtube.com/watch?v=\(video.videoId)"
+                    }
+                    
+                    if let url = URL(string: videoUrl) {
+                        UIApplication.shared.open(url) { success in
+                            if !success {
+                                print("Failed to open YouTube video: \(video.videoId)")
                             }
                         }
-                    }) {
-                        Image(systemName: "play.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.red)
                     }
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.white.opacity(0.95),
+                                        Color.white.opacity(0.85)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 70, height: 70)
+                            .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 8)
+                        
+                        Image(systemName: "play.fill")
+                            .font(.title)
+                            .foregroundColor(Color.themeButton)
+                    }
+                }
+                
+                // Duration badge
+                VStack {
+                    HStack {
+                        Spacer()
+                        
+                        Text(video.formattedDurationString)
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(Color.black.opacity(0.7))
+                            )
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+            }
+            .onAppear {
+                // Validate thumbnail URL
+                if let url = URL(string: video.thumbnail) {
+                    print("Loading thumbnail: \(url)")
+                } else {
+                    print("Invalid thumbnail URL: \(video.thumbnail)")
                 }
             }
             
-            Spacer()
+            // Video content
+            VStack(alignment: .leading, spacing: 8) {
+                Text(video.title)
+                    .font(.sfProRoundedSemibold(size: 20))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                
+                Text(video.channel)
+                    .font(.sfProRoundedSemibold(size: 16))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                
+                // Action button
+                Button(action: {
+                    // Open YouTube video
+                    let videoUrl: String
+                    if let url = video.url {
+                        videoUrl = url
+                    } else {
+                        videoUrl = "https://www.youtube.com/watch?v=\(video.videoId)"
+                    }
+                    
+                    if let url = URL(string: videoUrl) {
+                        UIApplication.shared.open(url) { success in
+                            if !success {
+                                print("Failed to open YouTube video: \(video.videoId)")
+                            }
+                        }
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 16))
+                        
+                        Text(localizationManager.localizedString(.watchVideo))
+                            .font(.sfProRoundedSemibold(size: 16))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.themeButton,
+                                        Color.themeAccent
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                    )
+                    .shadow(color: Color.themeButton.opacity(0.3), radius: 5, x: 0, y: 2)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 16)
         }
-        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color.themeCardBackground)
+                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
         )
-        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
 }
 

@@ -16,7 +16,7 @@ struct ConnectionStatusView: View {
             
             // Status text
             Text(isConnected ? localizationManager.localizedString(.connectedToServer) : localizationManager.localizedString(.notConnectedToServer))
-                .font(.caption)
+                .font(.sfProRoundedSemibold(size: 14))
                 .foregroundColor(isConnected ? .green : .red)
             
             Spacer()
