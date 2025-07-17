@@ -71,42 +71,55 @@ struct ChatView: View {
             .background(Color.customCardBackground)
             
             // Messages list
-            ScrollView {
-                LazyVStack(spacing: 4) {
-                    // Welcome message
-                    if messages.isEmpty {
-                        welcomeMessage
-                    }
-                    
-                    // Chat messages
-                    ForEach(messages) { message in
-                        MessageBubbleView(message: message)
-                            .id(message.id)
-                    }
-                    
-                    // Typing indicator
-                    if chatService.isLoading {
-                        HStack {
-                            TypingIndicatorView()
-                            Spacer()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 4) {
+                        // Welcome message
+                        if messages.isEmpty {
+                            welcomeMessage
                         }
-                        .id("typing")
+                        
+                        // Chat messages
+                        ForEach(messages) { message in
+                            MessageBubbleView(message: message)
+                                .id(message.id)
+                        }
+                        
+                        // Typing indicator
+                        if chatService.isLoading {
+                            HStack {
+                                TypingIndicatorView()
+                                Spacer()
+                            }
+                            .id("typing")
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 20) // Add extra padding at bottom
+                }
+                .onChange(of: messages.count) { _ in
+                    // Auto-scroll to bottom when new message is added
+                    if let lastMessage = messages.last {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            }
-            .onChange(of: messages.count) { _ in
-                // Auto-scroll will be handled by the view itself
-            }
-            .background(Color.customBackground)
-            .onChange(of: chatService.isLoading) { isLoading in
-                // Auto-scroll will be handled by the view itself
-            }
-            // Add tap gesture to dismiss keyboard when tapping on scroll view
-            .onTapGesture {
-                // This will dismiss the keyboard when tapping on the scroll view
-                KeyboardManager.dismissKeyboard()
+                .onChange(of: chatService.isLoading) { isLoading in
+                    // Auto-scroll to typing indicator when loading
+                    if isLoading {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            proxy.scrollTo("typing", anchor: .bottom)
+                        }
+                    }
+                }
+                .background(Color.customBackground)
+                // Add tap gesture to dismiss keyboard when tapping on scroll view
+                .onTapGesture {
+                    // This will dismiss the keyboard when tapping on the scroll view
+                    KeyboardManager.dismissKeyboard()
+                }
             }
             
             // Mode selector button

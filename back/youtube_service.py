@@ -138,103 +138,103 @@ class YouTubeService:
             fallback_videos = {
                 "stress": [
                     {
-                        "id": "dQw4w9WgXcQ",  # Example ID
+                        "id": "stress_help_1",
                         "title": "How to Deal with Stress: 5 Effective Techniques",
                         "description": "Practical advice for managing stress in daily life",
-                        "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
+                        "thumbnail": "https://img.youtube.com/vi/stress_help_1/mqdefault.jpg",
                         "channel": "Psychology and Self-Help",
                         "duration": "PT8M30S",
                         "view_count": 150000,
-                        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                        "url": "https://www.youtube.com/watch?v=stress_help_1"
                     }
                 ],
                 "meditation": [
                     {
-                        "id": "example2",
+                        "id": "meditation_guide_1",
                         "title": "Meditation for Beginners: Step-by-Step Guide",
                         "description": "Simple meditation technique for those just starting out",
-                        "thumbnail": "https://img.youtube.com/vi/example2/mqdefault.jpg",
+                        "thumbnail": "https://img.youtube.com/vi/meditation_guide_1/mqdefault.jpg",
                         "channel": "Meditation and Mindfulness",
                         "duration": "PT10M15S",
                         "view_count": 89000,
-                        "url": "https://www.youtube.com/watch?v=example2"
+                        "url": "https://www.youtube.com/watch?v=meditation_guide_1"
                     }
                 ],
                 "motivation": [
                     {
-                        "id": "example3",
+                        "id": "motivation_tips_1",
                         "title": "How to Find Motivation and Achieve Goals",
                         "description": "Practical tips for increasing motivation",
-                        "thumbnail": "https://img.youtube.com/vi/example3/mqdefault.jpg",
+                        "thumbnail": "https://img.youtube.com/vi/motivation_tips_1/mqdefault.jpg",
                         "channel": "Personal Growth",
                         "duration": "PT12M45S",
                         "view_count": 234000,
-                        "url": "https://www.youtube.com/watch?v=example3"
+                        "url": "https://www.youtube.com/watch?v=motivation_tips_1"
                     }
                 ]
             }
             
             # Return default motivational videos in English
             default_video = {
-                "id": "default1",
+                "id": "self_help_guide_1",
                 "title": "How to Improve Quality of Life: Practical Tips",
                 "description": "Simple steps to a happier and healthier life",
-                "thumbnail": "https://img.youtube.com/vi/default1/mqdefault.jpg",
+                "thumbnail": "https://img.youtube.com/vi/self_help_guide_1/mqdefault.jpg",
                 "channel": "Psychology and Self-Help",
                 "duration": "PT9M20S",
                 "view_count": 125000,
-                "url": "https://www.youtube.com/watch?v=default1"
+                "url": "https://www.youtube.com/watch?v=self_help_guide_1"
             }
         else:
             fallback_videos = {
                 "стресс": [
                     {
-                        "id": "dQw4w9WgXcQ",  # Example ID
+                        "id": "stress_help_ru_1",
                         "title": "Как справиться со стрессом: 5 эффективных техник",
                         "description": "Практические советы для управления стрессом в повседневной жизни",
-                        "thumbnail": "https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
+                        "thumbnail": "https://img.youtube.com/vi/stress_help_ru_1/mqdefault.jpg",
                         "channel": "Психология и самопомощь",
                         "duration": "PT8M30S",
                         "view_count": 150000,
-                        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                        "url": "https://www.youtube.com/watch?v=stress_help_ru_1"
                     }
                 ],
                 "медитация": [
                     {
-                        "id": "example2",
+                        "id": "meditation_ru_1",
                         "title": "Медитация для начинающих: пошаговое руководство",
                         "description": "Простая техника медитации для тех, кто только начинает",
-                        "thumbnail": "https://img.youtube.com/vi/example2/mqdefault.jpg",
+                        "thumbnail": "https://img.youtube.com/vi/meditation_ru_1/mqdefault.jpg",
                         "channel": "Медитация и осознанность",
                         "duration": "PT10M15S",
                         "view_count": 89000,
-                        "url": "https://www.youtube.com/watch?v=example2"
+                        "url": "https://www.youtube.com/watch?v=meditation_ru_1"
                     }
                 ],
                 "мотивация": [
                     {
-                        "id": "example3",
+                        "id": "motivation_ru_1",
                         "title": "Как найти мотивацию и достичь целей",
                         "description": "Практические советы для повышения мотивации",
-                        "thumbnail": "https://img.youtube.com/vi/example3/mqdefault.jpg",
+                        "thumbnail": "https://img.youtube.com/vi/motivation_ru_1/mqdefault.jpg",
                         "channel": "Личностный рост",
                         "duration": "PT12M45S",
                         "view_count": 234000,
-                        "url": "https://www.youtube.com/watch?v=example3"
+                        "url": "https://www.youtube.com/watch?v=motivation_ru_1"
                     }
                 ]
             }
             
             # Return default motivational videos in Russian
             default_video = {
-                "id": "default1",
+                "id": "self_help_ru_1",
                 "title": "Как улучшить качество жизни: практические советы",
                 "description": "Простые шаги к более счастливой и здоровой жизни",
-                "thumbnail": "https://img.youtube.com/vi/default1/mqdefault.jpg",
+                "thumbnail": "https://img.youtube.com/vi/self_help_ru_1/mqdefault.jpg",
                 "channel": "Психология и самопомощь",
                 "duration": "PT9M20S",
                 "view_count": 125000,
-                "url": "https://www.youtube.com/watch?v=default1"
+                "url": "https://www.youtube.com/watch?v=self_help_ru_1"
             }
         
         # Find best matching topic

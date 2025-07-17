@@ -17,6 +17,7 @@ struct SimpleMarkdownRenderer: View {
                 renderElement(element)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading) // Use full available width
     }
     
     @ViewBuilder
@@ -26,6 +27,7 @@ struct SimpleMarkdownRenderer: View {
             parseInlineContent(element.content)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(nil) // Allow unlimited lines
             
         case .bold:
             Text(element.content)
@@ -34,6 +36,7 @@ struct SimpleMarkdownRenderer: View {
                 .foregroundColor(textColor)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(nil) // Allow unlimited lines
             
         case .italic:
             Text(element.content)
@@ -42,6 +45,7 @@ struct SimpleMarkdownRenderer: View {
                 .foregroundColor(textColor)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(nil) // Allow unlimited lines
             
         case .code:
             Text(element.content)
@@ -55,6 +59,7 @@ struct SimpleMarkdownRenderer: View {
                 .foregroundColor(textColor)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(nil) // Allow unlimited lines
             
         case .listItem:
             HStack(alignment: .top, spacing: 8) {
@@ -68,6 +73,7 @@ struct SimpleMarkdownRenderer: View {
                     .foregroundColor(textColor)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil) // Allow unlimited lines
             }
         }
     }
@@ -81,14 +87,20 @@ struct SimpleMarkdownRenderer: View {
                 case .text:
                     Text(element.content)
                         .font(.body)
+                        .lineLimit(nil) // Allow unlimited lines
+                        .fixedSize(horizontal: false, vertical: true)
                 case .bold:
                     Text(element.content)
                         .font(.body)
                         .fontWeight(.bold)
+                        .lineLimit(nil) // Allow unlimited lines
+                        .fixedSize(horizontal: false, vertical: true)
                 case .italic:
                     Text(element.content)
                         .font(.body)
                         .italic()
+                        .lineLimit(nil) // Allow unlimited lines
+                        .fixedSize(horizontal: false, vertical: true)
                 case .code:
                     Text(element.content)
                         .font(.system(.body, design: .monospaced))
@@ -98,9 +110,13 @@ struct SimpleMarkdownRenderer: View {
                             RoundedRectangle(cornerRadius: 3)
                                 .fill(Color(.systemGray5))
                         )
+                        .lineLimit(nil) // Allow unlimited lines
+                        .fixedSize(horizontal: false, vertical: true)
                 case .listItem:
                     Text(element.content)
                         .font(.body)
+                        .lineLimit(nil) // Allow unlimited lines
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

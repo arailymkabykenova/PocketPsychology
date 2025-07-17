@@ -66,12 +66,56 @@ class ChatService: ObservableObject {
         let oldTopic = self.currentTopic
         self.currentTopic = topic
         userDefaults.set(topic, forKey: currentTopicKey)
-        print("💬 ChatService: Topic updated: '\(oldTopic ?? "nil")' -> '\(topic ?? "nil")'")
+        
+        if let newTopic = topic {
+            print("💬 ChatService: Topic updated: '\(oldTopic ?? "nil")' -> '\(newTopic)'")
+        } else {
+            print("💬 ChatService: Topic cleared: '\(oldTopic ?? "nil")' -> 'nil'")
+        }
+    }
+    
+    func forceTopicRefresh() {
+        print("🔄 ChatService: Forcing topic refresh")
+        self.updateCurrentTopic(nil)
+        // Clear any cached content to force fresh content loading
+        userDefaults.removeObject(forKey: "daily_quote")
+        userDefaults.removeObject(forKey: "last_quote_date")
+    }
+    
+    func smartUpdateTopic(_ newTopic: String?) {
+        // Only update if topic is significantly different
+        if let newTopic = newTopic, let currentTopic = self.currentTopic {
+            // Check if topics are similar (case-insensitive comparison)
+            let normalizedNew = newTopic.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalizedCurrent = currentTopic.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if normalizedNew != normalizedCurrent {
+                print("🔄 ChatService: Smart topic update: '\(currentTopic)' -> '\(newTopic)'")
+                self.updateCurrentTopic(newTopic)
+            } else {
+                print("ℹ️ ChatService: Topic unchanged: '\(currentTopic)' (similar to '\(newTopic)')")
+            }
+        } else if newTopic != nil {
+            // New topic provided but no current topic
+            print("🆕 ChatService: Setting new topic: '\(newTopic!)'")
+            self.updateCurrentTopic(newTopic)
+        } else {
+            // Clearing topic
+            print("🗑️ ChatService: Clearing topic")
+            self.updateCurrentTopic(nil)
+        }
     }
     
     func updateCurrentLanguage(_ language: Language) {
+        let oldLanguage = self.currentLanguage
         self.currentLanguage = language
         userDefaults.set(language.rawValue, forKey: languageKey)
+        
+        // Clear current topic when language changes to force new topic extraction
+        if oldLanguage != language {
+            print("🌍 ChatService: Language changed from \(oldLanguage.rawValue) to \(language.rawValue), clearing topic")
+            self.updateCurrentTopic(nil)
+        }
     }
     
     // MARK: - Chat History Management
@@ -239,7 +283,7 @@ class ChatService: ObservableObject {
                 // Update current topic if provided
                 if let topic = chatResponse.topic {
                     await MainActor.run {
-                        self.updateCurrentTopic(topic)
+                        self.smartUpdateTopic(topic)
                     }
                 }
                 
@@ -271,12 +315,13 @@ class ChatService: ObservableObject {
     // MARK: - Content Generation Monitoring
     
     private func monitorContentGeneration(topicTaskId: String) async {
+        print("🔍 ChatService: Starting topic extraction monitoring for task: \(topicTaskId)")
         await MainActor.run {
             isGeneratingContent = true
         }
         
-        // Poll task status every 1 second for up to 10 seconds
-        for _ in 0..<10 {
+        // Poll task status every 1.5 seconds for up to 20 seconds (faster, shorter timeout)
+        for attempt in 0..<13 {
             do {
                 let url = URL(string: "\(baseURL)/task/\(topicTaskId)/status")!
                 let (data, response) = try await URLSession.shared.data(from: url)
@@ -285,20 +330,22 @@ class ChatService: ObservableObject {
                    httpResponse.statusCode == 200 {
                     let taskStatus = try JSONDecoder().decode(TaskStatus.self, from: data)
                     
+                    print("📊 ChatService: Task status check \(attempt + 1)/13: \(taskStatus.status)")
+                    
                     if taskStatus.status == "completed" {
                         // Task completed successfully
                         if let result = taskStatus.result,
                            let topic = result.topic {
                             await MainActor.run {
-                                self.updateCurrentTopic(topic)
+                                self.smartUpdateTopic(topic)
                                 self.isGeneratingContent = false
                             }
-                            print("Topic extracted successfully: '\(topic)'")
+                            print("✅ ChatService: Topic extracted successfully: '\(topic)'")
                         } else {
                             await MainActor.run {
                                 self.isGeneratingContent = false
                             }
-                            print("Task completed but no topic found")
+                            print("⚠️ ChatService: Task completed but no topic found")
                         }
                         return
                     } else if taskStatus.status == "failed" {
@@ -306,23 +353,41 @@ class ChatService: ObservableObject {
                         await MainActor.run {
                             self.isGeneratingContent = false
                         }
-                        print("Topic extraction failed")
+                        print("❌ ChatService: Topic extraction failed")
                         return
+                    } else if taskStatus.status == "pending" {
+                        // Task still pending, continue polling
+                        print("⏳ ChatService: Topic extraction still pending...")
                     }
+                } else {
+                    print("⚠️ ChatService: Invalid response from task status endpoint")
                 }
             } catch {
-                print("Error monitoring task: \(error)")
+                print("❌ ChatService: Error monitoring task: \(error)")
             }
             
-            // Wait 1 second before next poll
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            // Wait 1.5 seconds before next poll (faster polling)
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
         }
         
-        // Timeout
+        // Timeout - try fallback immediately
         await MainActor.run {
             isGeneratingContent = false
         }
-        print("Topic extraction timed out")
+        print("⏰ ChatService: Topic extraction timed out after 20 seconds")
+        
+        // Try to fetch topic directly from user endpoint as fallback
+        print("🔄 ChatService: Attempting fallback topic fetch...")
+        if let fallbackTopic = await fetchUserTopic() {
+            await MainActor.run {
+                self.smartUpdateTopic(fallbackTopic)
+            }
+            print("✅ ChatService: Fallback topic fetch successful: '\(fallbackTopic)'")
+        } else {
+            print("ℹ️ ChatService: No fallback topic available, keeping current topic")
+            // Don't clear the current topic if fallback fails
+            // This ensures user always sees some content
+        }
     }
     
 

@@ -114,8 +114,17 @@ class ContentService: ObservableObject {
     // MARK: - Language Management
     
     func setLanguage(_ language: Language) {
+        let oldLanguage = currentLanguage
         currentLanguage = language
         userDefaults.set(language.rawValue, forKey: languageKey)
+        
+        print("🌍 ContentService: Language changed from \(oldLanguage.rawValue) to \(language.rawValue)")
+        
+        // Clear cached content when language changes
+        if oldLanguage != language {
+            print("🗑️ ContentService: Clearing cached content due to language change")
+            clearCachedContent()
+        }
         
         // Refresh content with new language
         Task {
@@ -525,13 +534,13 @@ class ContentService: ObservableObject {
             
             if httpResponse.statusCode != 200 {
                 let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
-                print("Server error: \(httpResponse.statusCode) - \(errorText)")
+                print("🎥 ContentService: Server error: \(httpResponse.statusCode) - \(errorText)")
                 return false
             }
             
             // Print response data for debugging
             let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
-            print("Response data: \(responseString)")
+            print("🎥 ContentService: Response data: \(responseString)")
             
             let videosResponse = try JSONDecoder().decode(VideosResponse.self, from: data)
             
@@ -552,6 +561,8 @@ class ContentService: ObservableObject {
         }
     }
     
+
+    
     // MARK: - Caching
     
     private func loadCachedContent() {
@@ -569,6 +580,32 @@ class ContentService: ObservableObject {
             userDefaults.set(data, forKey: dailyQuoteKey)
             userDefaults.set(date, forKey: lastQuoteDateKey)
         }
+    }
+    
+    private func clearCachedContent() {
+        // Clear all cached content
+        userDefaults.removeObject(forKey: dailyQuoteKey)
+        userDefaults.removeObject(forKey: lastQuoteDateKey)
+        userDefaults.removeObject(forKey: initialContentKey)
+        
+        // Clear published content
+        dailyQuote = nil
+        articles = []
+        videos = []
+        initialContent = nil
+        isInitialContentLoaded = false
+    }
+    
+    // MARK: - Content Refresh
+    
+    func forceContentRefresh() async {
+        print("🔄 ContentService: Forcing content refresh")
+        
+        // Clear all cached content
+        clearCachedContent()
+        
+        // Fetch fresh content
+        await fetchInitialContent()
     }
     
     // MARK: - Error Handling

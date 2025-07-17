@@ -42,8 +42,11 @@ struct MessageBubbleView: View {
                     .font(.body)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil) // Allow unlimited lines
             } else {
                 SimpleMarkdownRenderer(message.content, textColor: Color.assistantMessageText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil) // Allow unlimited lines
             }
             
             // Message metadata
@@ -77,7 +80,7 @@ struct MessageBubbleView: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .frame(maxWidth: UIScreen.main.bounds.width * 0.75, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading) // Use full available width
     }
     
     private func formatTime(_ date: Date) -> String {

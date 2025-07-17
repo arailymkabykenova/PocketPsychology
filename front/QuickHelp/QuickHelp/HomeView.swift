@@ -66,6 +66,22 @@ struct HomeView: View {
                 .navigationTitle("QuickHelp")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: {
+                            Task {
+                                if let topic = chatService.currentTopic {
+                                    await contentService.loadContentForTopic(topic)
+                                } else {
+                                    await contentService.forceContentRefresh()
+                                }
+                            }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
                             showingSettings = true
@@ -109,6 +125,11 @@ struct HomeView: View {
                 // If you need to refresh topic, do it separately
             }
             .onChange(of: currentLanguage) { newLanguage in
+                print("🏠 HomeView: Language changed to \(newLanguage.rawValue)")
+                
+                // Force topic refresh when language changes
+                chatService.forceTopicRefresh()
+                
                 // Update content service language and refresh content
                 contentService.setLanguage(newLanguage)
             }

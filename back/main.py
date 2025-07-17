@@ -144,7 +144,8 @@ async def health_check():
                 "azure_endpoint": bool(os.getenv("AZURE_OPENAI_ENDPOINT")),
                 "azure_api_key": bool(os.getenv("AZURE_OPENAI_API_KEY")),
                 "deployment_name": bool(os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")),
-                "redis_url": bool(os.getenv("REDIS_URL"))
+                "redis_url": bool(os.getenv("REDIS_URL")),
+                "youtube_api_key": bool(os.getenv("YOUTUBE_API_KEY"))
             }
         }
     except Exception as e:
@@ -406,23 +407,51 @@ async def get_videos(limit: int = 10, topic: Optional[str] = None, language: str
         if content_generator is None:
             raise HTTPException(status_code=500, detail="Content generator not available")
         
+        videos = []
+        
         # If topic is provided, search for videos on that topic
         if topic:
             videos = content_generator.youtube_service.search_videos(topic, limit, language=language)
         else:
-            # Get popular topics and recommend videos
-            popular_topics = ai_service.db.get_popular_topics(limit=3)
-            topics = [t["topic"] for t in popular_topics]
-            videos = content_generator.get_youtube_recommendations(topics, limit, language=language)
+            # Try to get popular topics and recommend videos
+            try:
+                popular_topics = ai_service.db.get_popular_topics(limit=3)
+                if popular_topics:
+                    topics = [t["topic"] for t in popular_topics]
+                    videos = content_generator.get_youtube_recommendations(topics, limit, language=language)
+                else:
+                    # If no popular topics, use fallback videos
+                    videos = content_generator.youtube_service._get_fallback_videos("motivation", language)
+            except Exception as e:
+                logger.warning(f"Failed to get popular topics, using fallback: {str(e)}")
+                # Use fallback videos when popular topics fail
+                videos = content_generator.youtube_service._get_fallback_videos("motivation", language)
+        
+        # Ensure we have videos
+        if not videos:
+            logger.warning("No videos found, using fallback videos")
+            videos = content_generator.youtube_service._get_fallback_videos("motivation", language)
         
         # Format duration for each video
         for video in videos:
             video["formatted_duration"] = content_generator.youtube_service.format_duration(video.get("duration", "PT0S"))
         
+        logger.info(f"Returning {len(videos)} videos for topic: {topic}")
         return {"videos": videos}
         
     except Exception as e:
         logger.error(f"Error getting videos: {str(e)}")
+        # Return fallback videos instead of error
+        try:
+            if content_generator and content_generator.youtube_service:
+                fallback_videos = content_generator.youtube_service._get_fallback_videos("motivation", language)
+                for video in fallback_videos:
+                    video["formatted_duration"] = content_generator.youtube_service.format_duration(video.get("duration", "PT0S"))
+                logger.info(f"Returning {len(fallback_videos)} fallback videos due to error")
+                return {"videos": fallback_videos}
+        except Exception as fallback_error:
+            logger.error(f"Fallback videos also failed: {str(fallback_error)}")
+        
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
