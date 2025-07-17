@@ -455,6 +455,60 @@ async def get_videos(limit: int = 10, topic: Optional[str] = None, language: str
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@app.get("/youtube/cache/status")
+async def get_youtube_cache_status():
+    """Get YouTube API cache status and quota information"""
+    try:
+        if content_generator is None or content_generator.youtube_service is None:
+            raise HTTPException(status_code=500, detail="YouTube service not available")
+        
+        status = content_generator.youtube_service.get_cache_status()
+        return {
+            "youtube_cache_status": status,
+            "message": "YouTube cache status retrieved successfully"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting YouTube cache status: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/youtube/cache/clear")
+async def clear_youtube_cache():
+    """Clear YouTube API cache"""
+    try:
+        if content_generator is None or content_generator.youtube_service is None:
+            raise HTTPException(status_code=500, detail="YouTube service not available")
+        
+        content_generator.youtube_service.clear_cache()
+        return {
+            "message": "YouTube cache cleared successfully",
+            "cache_size": 0
+        }
+        
+    except Exception as e:
+        logger.error(f"Error clearing YouTube cache: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/youtube/force-retry")
+async def force_retry_youtube_api():
+    """Force retry YouTube API by clearing quota exceeded flag"""
+    try:
+        if content_generator is None or content_generator.youtube_service is None:
+            raise HTTPException(status_code=500, detail="YouTube service not available")
+        
+        content_generator.youtube_service.force_retry_youtube_api()
+        return {
+            "message": "YouTube API retry forced - quota exceeded flag cleared",
+            "next_request_will_try_api": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Error forcing YouTube API retry: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.post("/content/generate")
 async def generate_content(content_type: str = "article", topic: Optional[str] = None, language: str = "ru"):
     """Generate content (article or quote) for a specific topic or general content"""
