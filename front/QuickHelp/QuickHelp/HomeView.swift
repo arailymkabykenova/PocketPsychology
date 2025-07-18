@@ -243,8 +243,8 @@ struct PersonalizedContentSection: View {
             // Articles section (personalized for topic)
             ArticlesSection(articles: contentService.articles, isLoading: contentService.isLoading && contentService.articles.isEmpty, contentService: contentService)
             
-            // Videos section (personalized for topic)
-            VideosSection(videos: contentService.videos, isLoading: contentService.isLoading && contentService.videos.isEmpty)
+                            // Videos section (personalized for topic)
+                VideosSection(videos: contentService.videos, isLoading: contentService.isLoading && contentService.videos.isEmpty, isQuotaExceeded: contentService.isYouTubeQuotaExceeded)
         }
     }
 }
@@ -262,8 +262,8 @@ struct GeneralContentSection: View {
             // Articles section
             ArticlesSection(articles: contentService.articles, isLoading: contentService.isLoading && contentService.articles.isEmpty, contentService: contentService)
             
-            // Videos section
-            VideosSection(videos: contentService.videos, isLoading: contentService.isLoading && contentService.videos.isEmpty)
+                            // Videos section
+                VideosSection(videos: contentService.videos, isLoading: contentService.isLoading && contentService.videos.isEmpty, isQuotaExceeded: contentService.isYouTubeQuotaExceeded)
         }
     }
 }
@@ -900,6 +900,7 @@ struct ArticleCard: View {
 struct VideosSection: View {
     let videos: [Video]
     let isLoading: Bool
+    let isQuotaExceeded: Bool
     @ObservedObject private var localizationManager = LocalizationManager.shared
     
     var body: some View {
@@ -966,24 +967,28 @@ struct VideosSection: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 60)
             } else if videos.isEmpty {
-                // Empty state
+                // Empty state or quota exceeded
                 VStack(spacing: 20) {
                     ZStack {
                         Circle()
                             .fill(Color.red.opacity(0.1))
                             .frame(width: 80, height: 80)
                         
-                        Image(systemName: "play.rectangle")
+                        Image(systemName: isQuotaExceeded ? "exclamationmark.triangle" : "play.rectangle")
                             .font(.system(size: 32, weight: .medium))
                             .foregroundColor(.red)
                     }
                     
                     VStack(spacing: 8) {
-                        Text(localizationManager.localizedString(.videosWillAppearHere))
+                        Text(isQuotaExceeded ? 
+                             localizationManager.localizedString(.youtubeQuotaExceeded) :
+                             localizationManager.localizedString(.videosWillAppearHere))
                             .font(.sfProRoundedSemibold(size: 20))
                             .foregroundColor(.primary)
                         
-                        Text(localizationManager.localizedString(.videosWillAppearSubtitle))
+                        Text(isQuotaExceeded ? 
+                             localizationManager.localizedString(.youtubeQuotaExceededSubtitle) :
+                             localizationManager.localizedString(.videosWillAppearSubtitle))
                             .font(.sfProRoundedSemibold(size: 16))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)

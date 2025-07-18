@@ -420,19 +420,18 @@ async def get_videos(limit: int = 5, topic: Optional[str] = None, language: str 
                 popular_topics = ai_service.db.get_popular_topics(limit=3)
                 if popular_topics:
                     topics = [t["topic"] for t in popular_topics]
-                    videos = content_generator.get_youtube_recommendations(topics, limit, language=language)
+                    videos = content_generator.get_youtube_recommendations(topics, limit, language)
                 else:
-                    # If no popular topics, use fallback videos
-                    videos = content_generator.youtube_service._get_fallback_videos("motivation", language)
+                    # If no popular topics, return empty videos
+                    videos = []
             except Exception as e:
-                logger.warning(f"Failed to get popular topics, using fallback: {str(e)}")
-                # Use fallback videos when popular topics fail
-                videos = content_generator.youtube_service._get_fallback_videos("motivation", language)
+                logger.warning(f"Failed to get popular topics: {str(e)}")
+                # Return empty videos when popular topics fail
+                videos = []
         
-        # Ensure we have videos
+        # Return videos (empty if none found)
         if not videos:
-            logger.warning("No videos found, using fallback videos")
-            videos = content_generator.youtube_service._get_fallback_videos("motivation", language)
+            logger.info("No videos found, returning empty array")
         
         # Format duration for each video
         for video in videos:
@@ -443,18 +442,9 @@ async def get_videos(limit: int = 5, topic: Optional[str] = None, language: str 
         
     except Exception as e:
         logger.error(f"Error getting videos: {str(e)}")
-        # Return fallback videos instead of error
-        try:
-            if content_generator and content_generator.youtube_service:
-                fallback_videos = content_generator.youtube_service._get_fallback_videos("motivation", language)
-                for video in fallback_videos:
-                    video["formatted_duration"] = content_generator.youtube_service.format_duration(video.get("duration", "PT0S"))
-                logger.info(f"Returning {len(fallback_videos)} fallback videos due to error")
-                return {"videos": fallback_videos}
-        except Exception as fallback_error:
-            logger.error(f"Fallback videos also failed: {str(fallback_error)}")
-        
-        raise HTTPException(status_code=500, detail="Internal server error")
+        # Return empty videos instead of error
+        logger.info("Returning empty videos due to error")
+        return {"videos": []}
 
 
 @app.get("/youtube/cache/status")

@@ -12,6 +12,7 @@ class ContentService: ObservableObject {
     @Published var dailyQuote: Quote?
     @Published var articles: [Article] = []
     @Published var videos: [Video] = []
+    @Published var isYouTubeQuotaExceeded = false
     
     // Initial content for new users
     @Published var initialContent: InitialContent?
@@ -54,6 +55,7 @@ class ContentService: ObservableObject {
         await MainActor.run {
             isLoading = true
             errorMessage = nil
+            isYouTubeQuotaExceeded = false
             // Don't clear content immediately - only clear if new content loads successfully
         }
         
@@ -505,6 +507,8 @@ class ContentService: ObservableObject {
             
             await MainActor.run {
                 self.videos = videosResponse.videos
+                // Check if videos array is empty - this indicates YouTube API quota exceeded
+                self.isYouTubeQuotaExceeded = videosResponse.videos.isEmpty
             }
             return true
             
@@ -544,6 +548,7 @@ class ContentService: ObservableObject {
         dailyQuote = nil
         articles = []
         videos = []
+        isYouTubeQuotaExceeded = false
         initialContent = nil
         isInitialContentLoaded = false
     }

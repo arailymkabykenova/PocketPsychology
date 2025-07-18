@@ -43,7 +43,8 @@ class YouTubeService:
             List of video information
         """
         if not self.youtube:
-            return self._get_fallback_videos(query, language)
+            logger.warning("YouTube API key not found, returning empty videos")
+            return []
         
         # Check cache first
         cache_key = f"{query}:{language}:{max_results}"
@@ -66,8 +67,8 @@ class YouTubeService:
                 retry_interval = self._quota_retry_interval
             
             if time_since_quota_exceeded < retry_interval:
-                logger.info(f"Using fallback videos due to recent quota exceeded for query: {query} (count: {self._quota_exceeded_count})")
-                return self._get_fallback_videos(query, language)
+                logger.info(f"Returning empty videos due to recent quota exceeded for query: {query} (count: {self._quota_exceeded_count})")
+                return []
         
         try:
             # Add language-specific keywords for better results
@@ -115,17 +116,17 @@ class YouTubeService:
                 self._quota_exceeded_time = datetime.now()
                 
                 if self._quota_exceeded_count >= self._max_quota_retries:
-                    logger.warning(f"YouTube API quota exceeded (attempt {self._quota_exceeded_count}), using fallback videos for 18 hours for query: {query}")
+                    logger.warning(f"YouTube API quota exceeded (attempt {self._quota_exceeded_count}), returning empty videos for 18 hours for query: {query}")
                 else:
-                    logger.warning(f"YouTube API quota exceeded (attempt {self._quota_exceeded_count}), using fallback videos for 6 hours for query: {query}")
+                    logger.warning(f"YouTube API quota exceeded (attempt {self._quota_exceeded_count}), returning empty videos for 6 hours for query: {query}")
                 
-                return self._get_fallback_videos(query, language)
+                return []
             else:
                 logger.error(f"YouTube API error: {str(e)}")
-                return self._get_fallback_videos(query, language)
+                return []
         except Exception as e:
             logger.error(f"Error searching YouTube videos: {str(e)}")
-            return self._get_fallback_videos(query, language)
+            return []
     
     def _enhance_query(self, query: str, language: str) -> str:
         """Enhance search query with relevant keywords"""

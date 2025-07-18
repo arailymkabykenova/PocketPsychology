@@ -107,6 +107,8 @@ enum LocalizationKey {
     case loadingVideosSubtitle
     case videosWillAppearHere
     case videosWillAppearSubtitle
+    case youtubeQuotaExceeded
+    case youtubeQuotaExceededSubtitle
     case newQuoteButton
     case keyPoints
     case practicalSteps
@@ -259,6 +261,10 @@ enum LocalizationKey {
             return "Видео появятся здесь"
         case .videosWillAppearSubtitle:
             return "Начните чат, чтобы получить персонализированные видео"
+        case .youtubeQuotaExceeded:
+            return "Лимит YouTube API исчерпан"
+        case .youtubeQuotaExceededSubtitle:
+            return "Дневной лимит запросов к YouTube API исчерпан. Видео будут доступны завтра."
         case .newQuoteButton:
             return "Новая цитата"
         case .keyPoints:
@@ -422,6 +428,10 @@ enum LocalizationKey {
             return "Videos will appear here"
         case .videosWillAppearSubtitle:
             return "Start chatting to get personalized videos"
+        case .youtubeQuotaExceeded:
+            return "YouTube API Quota Exceeded"
+        case .youtubeQuotaExceededSubtitle:
+            return "Daily YouTube API request limit exceeded. Videos will be available tomorrow."
         case .newQuoteButton:
             return "New Quote"
         case .keyPoints:

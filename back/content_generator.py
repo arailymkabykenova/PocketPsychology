@@ -565,7 +565,7 @@ class ContentGenerator:
             logger.error(f"Error getting personalized content: {str(e)}")
             return {}
     
-    def get_youtube_recommendations(self, topics: List[str] = None, max_results: int = 5) -> List[Dict]:
+    def get_youtube_recommendations(self, topics: List[str] = None, max_results: int = 5, language: str = "ru") -> List[Dict]:
         """Get YouTube video recommendations based on topics"""
         try:
             if not topics:
@@ -573,7 +573,7 @@ class ContentGenerator:
                 popular_topics = self.db.get_popular_topics(limit=5)
                 topics = [topic["topic"] for topic in popular_topics]
             
-            videos = self.youtube_service.get_recommended_videos(topics, max_results)
+            videos = self.youtube_service.get_recommended_videos(topics, max_results, language)
             
             # Format duration for each video
             for video in videos:
