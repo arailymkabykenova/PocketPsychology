@@ -150,7 +150,9 @@ struct PreviewCard: View {
             }
             
             // Content
-            Text("Здесь будет отображаться контент с выбранной цветовой схемой. Все элементы интерфейса будут использовать пастельные цвета выбранной темы.")
+            Text(localizationManager.currentLanguage == .russian ? 
+                "Здесь будет отображаться контент с выбранной цветовой схемой. Все элементы интерфейса будут использовать пастельные цвета выбранной темы." :
+                "Here you will see content with the selected color scheme. All interface elements will use the pastel colors of the selected theme.")
                 .font(.sfProRoundedSemibold(size: 17))
                 .foregroundColor(.primary)
                 .lineSpacing(4)

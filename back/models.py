@@ -25,6 +25,8 @@ class ChatResponse(BaseModel):
     topic: Optional[str] = None
     topic_task_id: Optional[str] = None
     recommendations_task_id: Optional[str] = None
+    auto_generation_started: Optional[bool] = False
+    is_first_message: Optional[bool] = False
 
 
 class ChatMessage(BaseModel):

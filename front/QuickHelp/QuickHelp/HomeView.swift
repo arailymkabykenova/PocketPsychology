@@ -73,6 +73,20 @@ struct HomeView: View {
                     .padding(.top, 20)
                     .padding(.bottom, 40)
                 }
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
+                    }
+                )
+                .coordinateSpace(name: "scroll")
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    // Send scroll offset notification for TabBar animation
+                    NotificationCenter.default.post(
+                        name: .scrollOffsetChanged,
+                        object: value
+                    )
+                }
                 .navigationTitle("QuickHelp")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbarBackground(.visible, for: .navigationBar)
@@ -1248,6 +1262,19 @@ struct VideoCarouselCard: View {
                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
         )
     }
+}
+
+// MARK: - Scroll Offset Preference Key
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+// MARK: - Notification Extension
+extension Notification.Name {
+    static let scrollOffsetChanged = Notification.Name("scrollOffsetChanged")
 }
 
 #Preview {

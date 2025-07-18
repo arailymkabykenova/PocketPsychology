@@ -94,7 +94,9 @@ async def chat(request: ChatRequest):
             mode=request.mode,
             topic=ai_response_data.get("topic"),
             topic_task_id=ai_response_data.get("topic_task_id"),
-            recommendations_task_id=ai_response_data.get("recommendations_task_id")
+            recommendations_task_id=ai_response_data.get("recommendations_task_id"),
+            auto_generation_started=ai_response_data.get("auto_generation_started", False),
+            is_first_message=ai_response_data.get("is_first_message", False)
         )
         
     except HTTPException:

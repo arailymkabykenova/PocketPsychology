@@ -1,28 +1,14 @@
 import SwiftUI
 
 enum FontWeight {
-    case black
-    case bold
     case heavy
     case semibold
-    case medium
-    case regular
-    case light
-    case thin
-    case ultraLight
 }
 
 struct FontManager {
-    // Exact file names from your fonts folder
-    static let sfProRoundedBlack = "SF-Pro-Rounded-Black"
-    static let sfProRoundedBold = "SF-Pro-Rounded-Bold"
+    // Only the fonts we actually use
     static let sfProRoundedHeavy = "SF-Pro-Rounded-Heavy"
     static let sfProRoundedSemibold = "SF-Pro-Rounded-Semibold"
-    static let sfProRoundedMedium = "SF-Pro-Rounded-Medium"
-    static let sfProRoundedRegular = "SF-Pro-Rounded-Regular"
-    static let sfProRoundedLight = "SF-Pro-Rounded-Light"
-    static let sfProRoundedThin = "SF-Pro-Rounded-Thin"
-    static let sfProRoundedUltralight = "SF-Pro-Rounded-Ultralight"
     
     // Alternative names that might be inside the font files
     static let sfProRoundedHeavyAlt = "SFProRounded-Heavy"
@@ -66,38 +52,16 @@ extension Font {
         let fontName: String
         
         switch weight {
-        case .black:
-            fontName = FontManager.sfProRoundedBlack
-        case .bold:
-            fontName = FontManager.sfProRoundedBold
         case .heavy:
             fontName = FontManager.sfProRoundedHeavy
         case .semibold:
             fontName = FontManager.sfProRoundedSemibold
-        case .medium:
-            fontName = FontManager.sfProRoundedMedium
-        case .regular:
-            fontName = FontManager.sfProRoundedRegular
-        case .light:
-            fontName = FontManager.sfProRoundedLight
-        case .thin:
-            fontName = FontManager.sfProRoundedThin
-        case .ultraLight:
-            fontName = FontManager.sfProRoundedUltralight
-        default:
-            fontName = FontManager.sfProRoundedRegular
         }
         
         return Font.custom(fontName, size: size)
     }
     
-    static func sfProRoundedBlack(size: CGFloat) -> Font {
-        return Font.custom(FontManager.sfProRoundedBlack, size: size)
-    }
-    
-    static func sfProRoundedBold(size: CGFloat) -> Font {
-        return Font.custom(FontManager.sfProRoundedBold, size: size)
-    }
+
     
     static func sfProRoundedHeavy(size: CGFloat) -> Font {
         // Try different possible font names
@@ -122,17 +86,7 @@ extension Font {
     
 
     
-    static func sfProRoundedMedium(size: CGFloat) -> Font {
-        return Font.custom(FontManager.sfProRoundedMedium, size: size)
-    }
-    
-    static func sfProRoundedRegular(size: CGFloat) -> Font {
-        return Font.custom(FontManager.sfProRoundedRegular, size: size)
-    }
-    
-    static func sfProRoundedLight(size: CGFloat) -> Font {
-        return Font.custom(FontManager.sfProRoundedLight, size: size)
-    }
+
     
     static func sfProRoundedSemibold(size: CGFloat) -> Font {
         // Try different possible font names
@@ -154,9 +108,7 @@ extension Font {
         return Font.system(size: size, weight: .semibold, design: .rounded)
     }
     
-    static func sfProRoundedUltralight(size: CGFloat) -> Font {
-        return Font.custom(FontManager.sfProRoundedUltralight, size: size)
-    }
+
 }
 
 // MARK: - Predefined Font Styles
@@ -177,12 +129,12 @@ extension Font {
     static let subtitleMedium = Font.sfProRoundedHeavy(size: 15)
     static let subtitleSmall = Font.sfProRoundedHeavy(size: 14)
     
-    // Body styles
+    // Body styles using SF Pro Rounded Semibold
     static let bodyLarge = Font.sfProRoundedSemibold(size: 17)
     static let bodyMedium = Font.sfProRoundedSemibold(size: 16)
     static let bodySmall = Font.sfProRoundedSemibold(size: 15)
     
-    // Caption styles
+    // Caption styles using SF Pro Rounded Semibold
     static let captionLarge = Font.sfProRoundedSemibold(size: 14)
     static let captionMedium = Font.sfProRoundedSemibold(size: 13)
     static let captionSmall = Font.sfProRoundedSemibold(size: 12)

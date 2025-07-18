@@ -44,21 +44,22 @@ enum ColorTheme: String, CaseIterable {
     case purple = "purple"
     
     var displayName: String {
+        let localizationManager = LocalizationManager.shared
         switch self {
         case .yellow:
-            return "Желтый"
+            return localizationManager.currentLanguage == .russian ? "Желтый" : "Yellow"
         case .darkBlue:
-            return "Синий"
+            return localizationManager.currentLanguage == .russian ? "Синий" : "Blue"
         case .black:
-            return "Черный"
+            return localizationManager.currentLanguage == .russian ? "Черный" : "Black"
         case .white:
-            return "Белый"
+            return localizationManager.currentLanguage == .russian ? "Белый" : "White"
         case .pink:
-            return "Розовый"
+            return localizationManager.currentLanguage == .russian ? "Розовый" : "Pink"
         case .green:
-            return "Зеленый"
+            return localizationManager.currentLanguage == .russian ? "Зеленый" : "Green"
         case .purple:
-            return "Фиолетовый"
+            return localizationManager.currentLanguage == .russian ? "Фиолетовый" : "Purple"
         }
     }
     

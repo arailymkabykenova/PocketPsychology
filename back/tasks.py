@@ -113,10 +113,9 @@ def extract_topic_from_message(message: str, user_id: str = "default", language:
         
 
         
-        # Clear previous topic cache and set new topic
+        # Set new topic in cache (don't clear previous cache immediately)
         cache_key = f"user_topic:{user_id}"
-        redis_client.delete(cache_key)  # Clear previous cache
-        redis_client.setex(cache_key, 60, topic)  # Cache for 1 minute
+        redis_client.setex(cache_key, 300, topic)  # Cache for 5 minutes
         logger.info(f"Cached topic for user {user_id}: '{topic}'")
         
         # Check if this is user's first message (no previous topic)
@@ -129,6 +128,11 @@ def extract_topic_from_message(message: str, user_id: str = "default", language:
         
         # Check if topic changed (compare with previous topic from database)
         topic_changed = previous_topic != topic if previous_topic else True
+        
+        # If topics are different, ask AI to determine if they're semantically similar
+        if previous_topic and topic != previous_topic:
+            topic_changed = _check_if_topics_are_similar(previous_topic, topic, language)
+            logger.info(f"Topic similarity check: '{previous_topic}' vs '{topic}' -> {'same context' if not topic_changed else 'different context'}")
         
         # AUTOMATIC CONTENT GENERATION - Only for first message or topic change
         if is_first_message:
@@ -185,6 +189,89 @@ def extract_topic_from_message(message: str, user_id: str = "default", language:
     except Exception as e:
         logger.error(f"Error extracting topic: {e}")
         return {"error": str(e)}
+
+def _check_if_topics_are_similar(topic1: str, topic2: str, language: str = "ru") -> bool:
+    """
+    Check if two topics are semantically similar (same context)
+    Returns True if topics are different, False if they're similar
+    """
+    try:
+        if not ai_service:
+            return True  # Default to different if AI service unavailable
+        
+        if language == "en":
+            prompt = f"""
+            Compare these two psychological topics and determine if they represent the same context/problem:
+            
+            Topic 1: "{topic1}"
+            Topic 2: "{topic2}"
+            
+            Consider:
+            - Are they about the same psychological issue?
+            - Do they require similar therapeutic approaches?
+            - Would the same self-help content be relevant for both?
+            
+            Examples of similar topics:
+            - "stress" and "anxiety" (both are about emotional distress)
+            - "work stress" and "job pressure" (both about workplace issues)
+            - "relationship problems" and "marriage issues" (both about relationships)
+            
+            Examples of different topics:
+            - "stress" and "motivation" (different psychological areas)
+            - "anxiety" and "career" (completely different contexts)
+            
+            Respond with only: SIMILAR or DIFFERENT
+            """
+        else:
+            prompt = f"""
+            Сравни эти две психологические темы и определи, представляют ли они один и тот же контекст/проблему:
+            
+            Тема 1: "{topic1}"
+            Тема 2: "{topic2}"
+            
+            Учитывай:
+            - Одна ли это психологическая проблема?
+            - Требуют ли они похожих терапевтических подходов?
+            - Будет ли один и тот же контент самопомощи релевантен для обеих тем?
+            
+            Примеры похожих тем:
+            - "стресс" и "тревога" (обе про эмоциональное напряжение)
+            - "рабочий стресс" и "давление на работе" (обе про проблемы на работе)
+            - "проблемы в отношениях" и "семейные проблемы" (обе про отношения)
+            
+            Примеры разных тем:
+            - "стресс" и "мотивация" (разные психологические области)
+            - "тревога" и "карьера" (совершенно разные контексты)
+            
+            Ответь только: ПОХОЖИ или РАЗНЫЕ
+            """
+        
+        response = ai_service.client.chat.completions.create(
+            model=ai_service.deployment_name,
+            messages=[
+                {"role": "system", "content": "You are an expert at analyzing psychological topics and determining semantic similarity."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=20,
+            temperature=0.1
+        )
+        
+        ai_response = response.choices[0].message.content.strip().lower()
+        
+        # Check response
+        if language == "en":
+            is_similar = "similar" in ai_response
+        else:
+            is_similar = "похожи" in ai_response or "одинаков" in ai_response
+        
+        logger.info(f"Topic similarity AI response: '{ai_response}' -> {'similar' if is_similar else 'different'}")
+        
+        # Return True if topics are different (need new content), False if similar (keep existing content)
+        return not is_similar
+        
+    except Exception as e:
+        logger.error(f"Error checking topic similarity: {e}")
+        return True  # Default to different if error occurs
 
 @celery_app.task
 def generate_content_for_topic(topic: str, content_type: str = "article", language: str = "ru") -> Dict:
@@ -632,7 +719,11 @@ def get_cached_topic(user_id: str) -> Optional[str]:
             redis_client.setex(cache_key, 300, db_topic)
             return db_topic
     
-    return None
+    # Final fallback - return a default topic (but don't save to database)
+    logger.info(f"No topic found for user {user_id}, using fallback topic")
+    fallback_topic = "общение"  # Default fallback topic
+    redis_client.setex(cache_key, 300, fallback_topic)
+    return fallback_topic
 
 def get_cached_recommendations(user_id: str) -> Optional[Dict]:
     """Get cached recommendations for user"""

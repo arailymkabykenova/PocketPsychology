@@ -98,6 +98,20 @@ struct ChatView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 20) // Add extra padding at bottom
                 }
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
+                    }
+                )
+                .coordinateSpace(name: "scroll")
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    // Send scroll offset notification for TabBar animation
+                    NotificationCenter.default.post(
+                        name: .scrollOffsetChanged,
+                        object: value
+                    )
+                }
                 .onChange(of: messages.count) { _ in
                     // Auto-scroll to bottom when new message is added
                     if let lastMessage = messages.last {
@@ -111,6 +125,21 @@ struct ChatView: View {
                     if isLoading {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             proxy.scrollTo("typing", anchor: .bottom)
+                        }
+                    }
+                }
+                .onAppear {
+                    // Auto-scroll to bottom when view appears (for existing messages)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        if let lastMessage = messages.last {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        } else if !messages.isEmpty {
+                            // Fallback: scroll to the last message by index
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo(messages[messages.count - 1].id, anchor: .bottom)
+                            }
                         }
                     }
                 }
@@ -188,9 +217,23 @@ struct ChatView: View {
         }
         .onAppear {
             loadSavedData()
+            
+            // Additional scroll to bottom after data is loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                if !messages.isEmpty {
+                    // This will trigger the scroll in the ScrollViewReader
+                }
+            }
         }
         .onChange(of: messages) { _ in
             chatService.saveChatHistory(messages)
+            
+            // Ensure scroll to bottom when messages change
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if let lastMessage = messages.last {
+                    // This will be handled by the ScrollViewReader's onChange
+                }
+            }
         }
         .onChange(of: selectedMode) { _ in
             chatService.saveSelectedMode(selectedMode)
@@ -208,6 +251,25 @@ struct ChatView: View {
             Text(localizationManager.localizedString(.clearHistoryMessage))
         }
         .background(Color.themeBackground)
+    }
+}
+
+// MARK: - Scroll Offset Preference Key
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+// MARK: - Notification Extension
+extension Notification.Name {
+    static let scrollOffsetChanged = Notification.Name("scrollOffsetChanged")
+}
+
+struct ChatView_Previews: PreviewProvider {
+    static var previews: some View {
+        ChatView(chatService: ChatService())
     }
     
     private var welcomeMessage: some View {

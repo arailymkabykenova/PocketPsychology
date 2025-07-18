@@ -173,8 +173,9 @@ class AIService:
             # Import tasks here to avoid circular import
             from tasks import extract_topic_from_message, update_user_recommendations, get_cached_topic, force_refresh_topic
             
-            # Force clear any cached topic to ensure fresh analysis
-            force_refresh_topic(user_id)
+            # Get current topic before potentially clearing it
+            current_topic = get_cached_topic(user_id)
+            logger.info(f"Current topic for user {user_id}: '{current_topic}'")
             
             # Extract topic asynchronously using Celery with detected language
             topic_task = extract_topic_from_message.delay(message, user_id, final_language)
@@ -182,16 +183,22 @@ class AIService:
             # Update user recommendations asynchronously with detected language
             recommendations_task = update_user_recommendations.delay(user_id, final_language)
             
-            # Get cached topic if available, otherwise return None (will be updated by task)
-            cached_topic = get_cached_topic(user_id)
-            logger.info(f"Retrieved cached topic for user {user_id}: '{cached_topic}'")
+            # Return current topic if available, otherwise return None (will be updated by task)
+            logger.info(f"Returning topic for user {user_id}: '{current_topic}'")
+            
+            # Check if this is first message (no previous topic in database)
+            previous_topic = self.db.get_user_current_topic(user_id)
+            is_first_message = previous_topic is None
+            logger.info(f"Database check for user {user_id}: previous_topic='{previous_topic}', is_first_message={is_first_message}")
             
             return {
                 "response": ai_response,
                 "mode": mode.value,
-                "topic": cached_topic,
+                "topic": current_topic,
                 "topic_task_id": topic_task.id,
-                "recommendations_task_id": recommendations_task.id
+                "recommendations_task_id": recommendations_task.id,
+                "auto_generation_started": is_first_message,  # True for first message
+                "is_first_message": is_first_message
             }
             
         except Exception as e:
