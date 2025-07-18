@@ -73,20 +73,7 @@ struct HomeView: View {
                     .padding(.top, 20)
                     .padding(.bottom, 40)
                 }
-                .background(
-                    GeometryReader { geometry in
-                        Color.clear
-                            .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
-                    }
-                )
-                .coordinateSpace(name: "scroll")
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                    // Send scroll offset notification for TabBar animation
-                    NotificationCenter.default.post(
-                        name: .scrollOffsetChanged,
-                        object: value
-                    )
-                }
+
                 .navigationTitle("QuickHelp")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbarBackground(.visible, for: .navigationBar)
@@ -678,10 +665,7 @@ struct ArticlesSection: View {
                 // Empty state
                 VStack(spacing: 20) {
                     ZStack {
-                        Circle()
-                            .fill(Color.green.opacity(0.1))
-                            .frame(width: 80, height: 80)
-                        
+                     
                         Image(systemName: "doc.text")
                             .font(.system(size: 32, weight: .medium))
                             .foregroundColor(.green)
@@ -724,56 +708,92 @@ struct ArticleCard: View {
         }) {
             VStack(alignment: .leading, spacing: 0) {
                 // Header with gradient
-                HStack(spacing: 16) {
-                    // Article icon with gradient background
+                HStack(spacing: 12) {
+                    // Article icon with liquid glass effect
                     ZStack {
                         Circle()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        article.approachColor.opacity(0.2),
-                                        article.approachColor.opacity(0.1)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                article.approachColor.opacity(0.4),
+                                                article.approachColor.opacity(0.2)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1.5
+                                    )
                             )
-                            .frame(width: 60, height: 60)
+                            .frame(width: 50, height: 50)
+                            .shadow(color: article.approachColor.opacity(0.3), radius: 8, x: 0, y: 4)
                         
                         Image(systemName: article.approachIcon)
-                            .font(.system(size: 24, weight: .medium))
+                            .font(.system(size: 20, weight: .medium))
                             .foregroundColor(article.approachColor)
                     }
                     
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(article.title)
-                            .font(.sfProRoundedSemibold(size: 20))
+                            .font(.sfProRoundedSemibold(size: 18))
                             .foregroundColor(.primary)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                         
-                        HStack(spacing: 8) {
-                            // Approach badge
+                        HStack(spacing: 6) {
+                            // Approach badge with liquid glass effect
                             Text(article.approachDisplayName)
-                                .font(.sfProRoundedSemibold(size: 14))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
+                                .font(.sfProRoundedSemibold(size: 11))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
                                 .background(
                                     Capsule()
-                                        .fill(article.approachColor.opacity(0.15))
+                                        .fill(.ultraThinMaterial)
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(
+                                                    LinearGradient(
+                                                        gradient: Gradient(colors: [
+                                                            article.approachColor.opacity(0.3),
+                                                            article.approachColor.opacity(0.1)
+                                                        ]),
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    ),
+                                                    lineWidth: 0.5
+                                                )
+                                        )
                                 )
                                 .foregroundColor(article.approachColor)
+                                .lineLimit(1)
                             
-                            // Topic badge
+                            // Topic badge with liquid glass effect
                             Text(article.category)
-                                .font(.sfProRoundedSemibold(size: 14))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
+                                .font(.sfProRoundedSemibold(size: 11))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
                                 .background(
                                     Capsule()
-                                        .fill(Color.green.opacity(0.15))
+                                        .fill(.ultraThinMaterial)
+                                        .overlay(
+                                            Capsule()
+                                                .stroke(
+                                                    LinearGradient(
+                                                        gradient: Gradient(colors: [
+                                                            Color.green.opacity(0.3),
+                                                            Color.green.opacity(0.1)
+                                                        ]),
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    ),
+                                                    lineWidth: 0.5
+                                                )
+                                        )
                                 )
                                 .foregroundColor(.green)
+                                .lineLimit(1)
                         }
                     }
                     
@@ -781,21 +801,31 @@ struct ArticleCard: View {
                     
                     VStack(alignment: .trailing, spacing: 4) {
                         Image(systemName: "chevron.right")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                         
                         Text(article.readTime)
-                            .font(.sfProRoundedSemibold(size: 14))
+                            .font(.sfProRoundedSemibold(size: 12))
                             .foregroundColor(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                                    )
+                            )
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
                 .background(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            article.approachColor.opacity(0.03),
+                            article.approachColor.opacity(0.05),
                             Color.clear
                         ]),
                         startPoint: .top,
@@ -806,17 +836,31 @@ struct ArticleCard: View {
                 // Description
                 if !article.description.isEmpty {
                     Text(article.description)
-                        .font(.sfProRoundedSemibold(size: 16))
+                        .font(.sfProRoundedSemibold(size: 15))
                         .foregroundColor(.secondary)
                         .lineLimit(3)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
                 }
             }
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.customCardBackground)
-                    .shadow(color: Color.black.opacity(0.06), radius: 15, x: 0, y: 8)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.white.opacity(0.3),
+                                        Color.white.opacity(0.1)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -1264,18 +1308,7 @@ struct VideoCarouselCard: View {
     }
 }
 
-// MARK: - Scroll Offset Preference Key
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
 
-// MARK: - Notification Extension
-extension Notification.Name {
-    static let scrollOffsetChanged = Notification.Name("scrollOffsetChanged")
-}
 
 #Preview {
     HomeView(chatService: ChatService(), showingSettings: .constant(false))

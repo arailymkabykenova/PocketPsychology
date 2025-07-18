@@ -230,7 +230,8 @@ struct Article: Codable, Identifiable {
         // Estimate reading time (200 words per minute)
         let words = content.split(separator: " ").count
         let minutes = max(1, words / 200)
-        return "\(minutes) мин"
+        let localizationManager = LocalizationManager.shared
+        return "\(minutes) \(localizationManager.currentLanguage == .russian ? "мин" : "min")"
     }
     
     var category: String {

@@ -98,20 +98,7 @@ struct ChatView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 20) // Add extra padding at bottom
                 }
-                .background(
-                    GeometryReader { geometry in
-                        Color.clear
-                            .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
-                    }
-                )
-                .coordinateSpace(name: "scroll")
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                    // Send scroll offset notification for TabBar animation
-                    NotificationCenter.default.post(
-                        name: .scrollOffsetChanged,
-                        object: value
-                    )
-                }
+
                 .onChange(of: messages.count) { _ in
                     // Auto-scroll to bottom when new message is added
                     if let lastMessage = messages.last {
@@ -252,25 +239,8 @@ struct ChatView: View {
         }
         .background(Color.themeBackground)
     }
-}
-
-// MARK: - Scroll Offset Preference Key
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-// MARK: - Notification Extension
-extension Notification.Name {
-    static let scrollOffsetChanged = Notification.Name("scrollOffsetChanged")
-}
-
-struct ChatView_Previews: PreviewProvider {
-    static var previews: some View {
-        ChatView(chatService: ChatService())
-    }
+    
+    // MARK: - Computed Properties
     
     private var welcomeMessage: some View {
         VStack(spacing: 16) {
@@ -295,6 +265,26 @@ struct ChatView_Previews: PreviewProvider {
         .opacity(messages.isEmpty ? 1 : 0)
         .animation(.easeInOut(duration: 0.3), value: messages.isEmpty)
     }
+    
+    private var contentGenerationIndicator: some View {
+        HStack(spacing: 6) {
+            ProgressView()
+                .scaleEffect(0.6)
+                .foregroundColor(.blue)
+            
+            Text(localizationManager.localizedString(.analyzing))
+                .font(.caption)
+                .foregroundColor(.blue)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(Color.blue.opacity(0.1))
+        )
+    }
+    
+    // MARK: - Methods
     
     private func sendMessage() {
         let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -358,28 +348,6 @@ struct ChatView_Previews: PreviewProvider {
         }
     }
     
-
-    
-    // MARK: - Computed Properties
-    
-    private var contentGenerationIndicator: some View {
-        HStack(spacing: 6) {
-            ProgressView()
-                .scaleEffect(0.6)
-                .foregroundColor(.blue)
-            
-            Text(localizationManager.localizedString(.analyzing))
-                .font(.caption)
-                .foregroundColor(.blue)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(Color.blue.opacity(0.1))
-        )
-    }
-    
     private func currentTopicIndicator(topic: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: "lightbulb.fill")
@@ -397,6 +365,13 @@ struct ChatView_Previews: PreviewProvider {
             Capsule()
                 .fill(Color.yellow.opacity(0.1))
         )
+    }
+}
+
+// MARK: - Preview
+struct ChatView_Previews: PreviewProvider {
+    static var previews: some View {
+        ChatView(chatService: ChatService())
     }
 }
 
