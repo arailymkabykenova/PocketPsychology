@@ -51,14 +51,10 @@ class ContentService: ObservableObject {
     // MARK: - Topic-Based Content Loading
     
     func loadContentForTopic(_ topic: String) async {
-        print("🔄 ContentService: Loading content for topic: '\(topic)'")
-        print("🌐 ContentService: Using baseURL: '\(baseURL)'")
-        
         await MainActor.run {
             isLoading = true
             errorMessage = nil
             // Don't clear content immediately - only clear if new content loads successfully
-            print("🔄 ContentService: Starting content refresh for topic: '\(topic)'")
         }
         
         // Track successful loads
@@ -69,17 +65,14 @@ class ContentService: ObservableObject {
         // Load articles, videos, and quote for the specific topic
         await withTaskGroup(of: (String, Bool).self) { group in
             group.addTask { 
-                print("📄 ContentService: Fetching articles for topic: '\(topic)'")
                 let success = await self.fetchArticles(topic: topic)
                 return ("articles", success)
             }
             group.addTask { 
-                print("🎥 ContentService: Fetching videos for topic: '\(topic)'")
                 let success = await self.fetchVideos(topic: topic)
                 return ("videos", success)
             }
             group.addTask { 
-                print("💬 ContentService: Fetching daily quote for topic: '\(topic)'")
                 let success = await self.fetchDailyQuote(topic: topic)
                 return ("quote", success)
             }
@@ -101,8 +94,6 @@ class ContentService: ObservableObject {
         
         await MainActor.run {
             isLoading = false
-            print("✅ ContentService: Content loading completed for topic: '\(topic)'")
-            print("📊 ContentService: Articles: \(self.articles.count) (loaded: \(articlesLoaded)), Videos: \(self.videos.count) (loaded: \(videosLoaded)), Quote: \(self.dailyQuote != nil ? "loaded" : "none") (loaded: \(quoteLoaded))")
             
             // Only show error if all content failed to load
             if !articlesLoaded && !videosLoaded && !quoteLoaded {
@@ -118,11 +109,8 @@ class ContentService: ObservableObject {
         currentLanguage = language
         userDefaults.set(language.rawValue, forKey: languageKey)
         
-        print("🌍 ContentService: Language changed from \(oldLanguage.rawValue) to \(language.rawValue)")
-        
         // Clear cached content when language changes
         if oldLanguage != language {
-            print("🗑️ ContentService: Clearing cached content due to language change")
             clearCachedContent()
         }
         
@@ -229,7 +217,7 @@ class ContentService: ObservableObject {
             let data = try JSONEncoder().encode(content)
             userDefaults.set(data, forKey: initialContentKey)
         } catch {
-            print("Error caching initial content: \(error)")
+            // Handle error silently
         }
     }
     
@@ -243,57 +231,44 @@ class ContentService: ObservableObject {
             self.initialContent = content
             self.isInitialContentLoaded = true
         } catch {
-            print("Error loading cached initial content: \(error)")
+            // Handle error silently
         }
     }
     
     // MARK: - Topic-Based Content
     
     func fetchArticles(topic: String? = nil) async -> Bool {
-        print("📄 ContentService: fetchArticles called with topic: '\(topic ?? "nil")'")
         
         do {
             var urlString = "\(baseURL)/content/articles?language=\(currentLanguage.rawValue)"
             if let topic = topic {
                 let encodedTopic = topic.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? topic
                 urlString += "&topic=\(encodedTopic)"
-                print("📄 ContentService: Encoded topic '\(topic)' to '\(encodedTopic)'")
             }
             
             guard let url = URL(string: urlString) else {
-                print("📄 ContentService: Invalid URL for articles")
                 return false
             }
-            
-            print("📄 ContentService: Fetching articles from: \(url)")
             
             let (data, response) = try await URLSession.shared.data(from: url)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("📄 ContentService: Invalid response for articles")
                 return false
             }
             
             if httpResponse.statusCode != 200 {
                 let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
-                print("📄 ContentService: Server error: \(httpResponse.statusCode) - \(errorText)")
                 return false
             }
-            
-            // Print response data for debugging
-            let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
-            print("📄 ContentService: Response data: \(responseString)")
             
             let articlesResponse = try JSONDecoder().decode(ArticlesResponse.self, from: data)
             
             await MainActor.run {
                 self.articles = articlesResponse.articles
-                print("📄 ContentService: Articles loaded: \(articlesResponse.articles.count) articles")
             }
             return true
             
         } catch {
-            print("📄 ContentService: Failed to fetch articles: \(error.localizedDescription)")
             return false
         }
     }
@@ -319,11 +294,9 @@ class ContentService: ObservableObject {
             if let topic = topic {
                 let encodedTopic = topic.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? topic
                 urlString += "&topic=\(encodedTopic)"
-                print("💬 ContentService: Fetching quote for topic: '\(topic)' (encoded: '\(encodedTopic)')")
             }
             
             guard let url = URL(string: urlString) else {
-                print("💬 ContentService: Invalid URL for daily quote")
                 return false
             }
             
@@ -331,7 +304,6 @@ class ContentService: ObservableObject {
             
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
-                print("💬 ContentService: Server error for daily quote")
                 return false
             }
             
@@ -339,7 +311,6 @@ class ContentService: ObservableObject {
             
             await MainActor.run {
                 self.dailyQuote = quote
-                print("💬 ContentService: Daily quote loaded")
                 
                 // Cache the quote
                 self.cacheDailyQuote(quote, date: today)
@@ -347,7 +318,6 @@ class ContentService: ObservableObject {
             return true
             
         } catch {
-            print("💬 ContentService: Failed to fetch quote: \(error.localizedDescription)")
             return false
         }
     }
@@ -507,7 +477,6 @@ class ContentService: ObservableObject {
     // MARK: - Videos
     
     func fetchVideos(topic: String? = nil, limit: Int = 10) async -> Bool {
-        print("🎥 ContentService: fetchVideos called with topic: '\(topic ?? "nil")'")
         
         do {
             let languageParam = currentLanguage.rawValue
@@ -515,48 +484,31 @@ class ContentService: ObservableObject {
             if let topic = topic {
                 let encodedTopic = topic.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? topic
                 urlString += "&topic=\(encodedTopic)"
-                print("🎥 ContentService: Encoded topic '\(topic)' to '\(encodedTopic)'")
             }
             
             guard let url = URL(string: urlString) else {
-                print("🎥 ContentService: Invalid URL for videos")
                 return false
             }
-            
-            print("🎥 ContentService: Fetching videos from: \(url)")
             
             let (data, response) = try await URLSession.shared.data(from: url)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("🎥 ContentService: Invalid response for videos")
                 return false
             }
             
             if httpResponse.statusCode != 200 {
                 let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
-                print("🎥 ContentService: Server error: \(httpResponse.statusCode) - \(errorText)")
                 return false
             }
-            
-            // Print response data for debugging
-            let responseString = String(data: data, encoding: .utf8) ?? "Unable to decode response"
-            print("🎥 ContentService: Response data: \(responseString)")
             
             let videosResponse = try JSONDecoder().decode(VideosResponse.self, from: data)
             
             await MainActor.run {
                 self.videos = videosResponse.videos
-                print("🎥 ContentService: Successfully loaded \(videosResponse.videos.count) videos")
-                
-                // Debug: print first video structure
-                if let firstVideo = videosResponse.videos.first {
-                    print("🎥 ContentService: First video structure: \(firstVideo)")
-                }
             }
             return true
             
         } catch {
-            print("🎥 ContentService: Failed to fetch videos: \(error.localizedDescription)")
             return false
         }
     }
@@ -599,7 +551,6 @@ class ContentService: ObservableObject {
     // MARK: - Content Refresh
     
     func forceContentRefresh() async {
-        print("🔄 ContentService: Forcing content refresh")
         
         // Clear all cached content
         clearCachedContent()

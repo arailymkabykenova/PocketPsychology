@@ -403,7 +403,7 @@ async def get_articles(limit: int = 10, topic: Optional[str] = None, language: s
 
 
 @app.get("/content/videos")
-async def get_videos(limit: int = 10, topic: Optional[str] = None, language: str = "ru"):
+async def get_videos(limit: int = 5, topic: Optional[str] = None, language: str = "ru"):
     """Get YouTube video recommendations"""
     try:
         if content_generator is None:

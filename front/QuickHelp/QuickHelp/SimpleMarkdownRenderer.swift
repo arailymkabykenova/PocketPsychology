@@ -29,6 +29,7 @@ struct SimpleMarkdownRenderer: View {
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineLimit(nil) // Allow unlimited lines
+                .lineSpacing(2) // Add some line spacing for better readability
             
         case .bold:
             Text(element.content)
@@ -76,6 +77,17 @@ struct SimpleMarkdownRenderer: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(nil) // Allow unlimited lines
             }
+            
+        case .header:
+            Text(element.content)
+                .font(.sfProRoundedHeavy(size: 20))
+                .fontWeight(.bold)
+                .foregroundColor(textColor)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(nil) // Allow unlimited lines
+                .padding(.top, 8)
+                .padding(.bottom, 4)
         }
     }
     
@@ -90,18 +102,21 @@ struct SimpleMarkdownRenderer: View {
                         .font(.sfProRoundedSemibold(size: 17))
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
+                        .lineSpacing(2) // Add line spacing
                 case .bold:
                     Text(element.content)
                         .font(.sfProRoundedSemibold(size: 17))
                         .fontWeight(.bold)
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
+                        .lineSpacing(2) // Add line spacing
                 case .italic:
                     Text(element.content)
                         .font(.sfProRoundedSemibold(size: 17))
                         .italic()
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
+                        .lineSpacing(2) // Add line spacing
                 case .code:
                     Text(element.content)
                         .font(.sfProRoundedSemibold(size: 17))
@@ -113,11 +128,20 @@ struct SimpleMarkdownRenderer: View {
                         )
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
+                        .lineSpacing(2) // Add line spacing
                 case .listItem:
                     Text(element.content)
                         .font(.sfProRoundedSemibold(size: 17))
                         .lineLimit(nil) // Allow unlimited lines
                         .fixedSize(horizontal: false, vertical: true)
+                        .lineSpacing(2) // Add line spacing
+                case .header:
+                    Text(element.content)
+                        .font(.sfProRoundedHeavy(size: 20))
+                        .fontWeight(.bold)
+                        .lineLimit(nil) // Allow unlimited lines
+                        .fixedSize(horizontal: false, vertical: true)
+                        .lineSpacing(2) // Add line spacing
                 }
             }
         }
@@ -244,6 +268,7 @@ enum SimpleMarkdownElementType {
     case italic
     case code
     case listItem
+    case header
 }
 
 // MARK: - Simple Markdown Parser
@@ -254,6 +279,32 @@ func parseSimpleMarkdown(_ text: String) -> [SimpleMarkdownElement] {
     
     while i < text.count {
         let char = text[text.index(text.startIndex, offsetBy: i)]
+        
+        // Check for headers (### text)
+        if char == "#" && i + 2 < text.count {
+            let nextChar = text[text.index(text.startIndex, offsetBy: i + 1)]
+            let nextNextChar = text[text.index(text.startIndex, offsetBy: i + 2)]
+            
+            if nextChar == "#" && nextNextChar == "#" {
+                if !currentText.isEmpty {
+                    elements.append(SimpleMarkdownElement(type: .text, content: currentText))
+                    currentText = ""
+                }
+                
+                // Find end of line for header
+                var j = i + 3
+                var headerContent = ""
+                while j < text.count && text[text.index(text.startIndex, offsetBy: j)] != "\n" {
+                    headerContent += String(text[text.index(text.startIndex, offsetBy: j)])
+                    j += 1
+                }
+                // Trim leading spaces
+                headerContent = headerContent.trimmingCharacters(in: .whitespaces)
+                elements.append(SimpleMarkdownElement(type: .header, content: headerContent))
+                i = j
+                continue
+            }
+        }
         
         // Check for bold (**text**)
         if char == "*" && i + 1 < text.count && text[text.index(text.startIndex, offsetBy: i + 1)] == "*" {

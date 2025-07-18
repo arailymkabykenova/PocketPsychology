@@ -6,7 +6,6 @@ struct ChatView: View {
     @State private var messages: [ChatMessage] = []
     @State private var inputText = ""
     @State private var selectedMode: ChatMode = .support
-    @State private var selectedLanguage: Language = .russian
     @State private var showingModeSelector = false
     @State private var showingLanguageSelector = false
     @State private var showingError = false
@@ -30,8 +29,7 @@ struct ChatView: View {
                     Spacer()
                     
                     Text(localizationManager.localizedString(.chat))
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                        .font(.sfProRoundedSemibold(size: 20))
                         .frame(maxWidth: .infinity)
                     
                     Spacer()
@@ -42,7 +40,7 @@ struct ChatView: View {
                         }
                     }) {
                         HStack(spacing: 4) {
-                            Text(selectedLanguage.flag)
+                            Text(localizationManager.currentLanguage.flag)
                                 .font(.system(size: 16))
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 12, weight: .medium))
@@ -148,13 +146,13 @@ struct ChatView: View {
                     HStack(spacing: 8) {
                         Image(systemName: selectedMode.icon)
                             .font(.system(size: 16, weight: .medium))
-                        Text(selectedMode.displayName(for: selectedLanguage))
+                        Text(selectedMode.displayName(for: localizationManager.currentLanguage))
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
                     .background(
                         Capsule()
                             .fill(selectedMode.color)
@@ -185,12 +183,12 @@ struct ChatView: View {
             .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .sheet(isPresented: $showingModeSelector) {
-            ModeSelectorView(selectedMode: $selectedMode, selectedLanguage: selectedLanguage)
+            ModeSelectorView(selectedMode: $selectedMode, selectedLanguage: localizationManager.currentLanguage)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingLanguageSelector) {
-            LanguageSelectorView(selectedLanguage: $selectedLanguage)
+            LanguageSelectorView(selectedLanguage: $localizationManager.currentLanguage)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
@@ -225,8 +223,7 @@ struct ChatView: View {
         .onChange(of: selectedMode) { _ in
             chatService.saveSelectedMode(selectedMode)
         }
-        .onChange(of: selectedLanguage) { newLanguage in
-            localizationManager.setLanguage(newLanguage)
+        .onChange(of: localizationManager.currentLanguage) { newLanguage in
             chatService.updateCurrentLanguage(newLanguage)
         }
         .alert(localizationManager.localizedString(.clearHistoryAlert), isPresented: $showingClearHistoryAlert) {
@@ -331,9 +328,6 @@ struct ChatView: View {
         
         // Load saved mode
         selectedMode = chatService.loadSelectedMode()
-        
-        // Load saved language
-        selectedLanguage = localizationManager.currentLanguage
     }
     
     private func clearHistory() {

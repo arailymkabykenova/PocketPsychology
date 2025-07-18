@@ -30,7 +30,7 @@ class YouTubeService:
         self._quota_retry_interval = timedelta(hours=6)  # Retry after 6 hours initially
         self._max_quota_retries = 2  # After 2 failures, wait longer
     
-    def search_videos(self, query: str, max_results: int = 10, language: str = "ru") -> List[Dict]:
+    def search_videos(self, query: str, max_results: int = 5, language: str = "ru") -> List[Dict]:
         """
         Search for YouTube videos based on query
         

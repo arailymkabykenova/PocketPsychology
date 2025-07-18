@@ -6,7 +6,11 @@ class LocalizationManager: ObservableObject {
     static let shared = LocalizationManager()
     
     private init() {
-        // Load saved language preference
+        // Load saved language preference immediately
+        loadSavedLanguage()
+    }
+    
+    private func loadSavedLanguage() {
         if let savedLanguage = UserDefaults.standard.string(forKey: "selected_language"),
            let language = Language(rawValue: savedLanguage) {
             currentLanguage = language
@@ -16,6 +20,10 @@ class LocalizationManager: ObservableObject {
     func setLanguage(_ language: Language) {
         currentLanguage = language
         UserDefaults.standard.set(language.rawValue, forKey: "selected_language")
+    }
+    
+    func hasUserSelectedLanguage() -> Bool {
+        return UserDefaults.standard.object(forKey: "selected_language") != nil
     }
     
     func localizedString(_ key: LocalizationKey) -> String {
@@ -118,7 +126,7 @@ enum LocalizationKey {
         case .selectMode:
             return "Выберите режим"
         case .selectModeSubtitle:
-            return "Каждый режим предлагает разный подход к общению"
+            return "Выберите подходящий для вас подход"
         case .done:
             return "Готово"
         case .clearHistory:
@@ -281,7 +289,7 @@ enum LocalizationKey {
         case .selectMode:
             return "Select Mode"
         case .selectModeSubtitle:
-            return "Each mode offers a different approach to communication"
+            return "Choose the approach that works for you"
         case .done:
             return "Done"
         case .clearHistory:

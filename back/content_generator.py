@@ -565,7 +565,7 @@ class ContentGenerator:
             logger.error(f"Error getting personalized content: {str(e)}")
             return {}
     
-    def get_youtube_recommendations(self, topics: List[str] = None, max_results: int = 10) -> List[Dict]:
+    def get_youtube_recommendations(self, topics: List[str] = None, max_results: int = 5) -> List[Dict]:
         """Get YouTube video recommendations based on topics"""
         try:
             if not topics:

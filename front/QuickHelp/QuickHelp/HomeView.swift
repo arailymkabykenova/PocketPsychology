@@ -1,11 +1,19 @@
 import SwiftUI
 import Foundation
 
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct HomeView: View {
     @ObservedObject private var localizationManager = LocalizationManager.shared
     @StateObject private var contentService = ContentService()
     @ObservedObject var chatService: ChatService
     @Binding var showingSettings: Bool
+    @State private var scrollOffset: CGFloat = 0
     
     // Sync language between localization manager and content service
     private var currentLanguage: Language {
@@ -70,14 +78,37 @@ struct HomeView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(.top, 20) // Increased top padding for more space
                     .padding(.bottom, 40)
                 }
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
+                    }
+                )
+                .coordinateSpace(name: "scroll")
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    scrollOffset = value
+                }
 
-                .navigationTitle("QuickHelp")
-                .navigationBarTitleDisplayMode(.large)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.visible, for: .navigationBar)
                 .toolbarBackground(Color.themeBackground, for: .navigationBar)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text("QUICK HELP")
+                            .font(.sfProRoundedSemibold(size: 28)) // Larger initial font size
+                           
+                            .foregroundColor(.primary)
+                            .scaleEffect(max(0.8, 1.0 - abs(scrollOffset) * 0.001)) // Scale down when scrolling
+                            .offset(y: max(-20, -scrollOffset * 0.3)) // Move up when scrolling
+                             .padding(.top, max(10, 20 - scrollOffset * 0.1))  
+                            .padding(.bottom, max(10, 20 - scrollOffset * 0.1)) 
+                            .animation(.easeInOut(duration: 0.3), value: scrollOffset)
+                           
+                    }
+                }
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
@@ -206,8 +237,6 @@ struct PersonalizedContentSection: View {
     
     var body: some View {
         VStack(spacing: 24) {
-            let _ = print("🎯 PersonalizedContentSection: topic='\(topic)', articles=\(contentService.articles.count), videos=\(contentService.videos.count)")
-            
             // Quote of the day (personalized for topic)
             QuoteOfTheDayCard(quote: contentService.dailyQuote, isLoading: contentService.isLoading && contentService.dailyQuote == nil, contentService: contentService)
             
@@ -600,8 +629,6 @@ struct ArticlesSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            let _ = print("📄 ArticlesSection: articles.count=\(articles.count), isLoading=\(isLoading)")
-            
             // Section header
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -979,7 +1006,7 @@ struct VideosSection: View {
                             .frame(width: 280)
                         }
                     }
-                    .padding(.horizontal, UIScreen.main.bounds.width / 2 - 140) // Center the first card
+                    .padding(.horizontal, 20) // Reduced padding to match other sections
                     .padding(.vertical, 8)
                 }
                 .frame(height: 400) // Fixed height for the carousel
@@ -1056,9 +1083,7 @@ struct VideoCard: View {
                     
                     if let url = URL(string: videoUrl) {
                         UIApplication.shared.open(url) { success in
-                            if !success {
-                                print("Failed to open YouTube video: \(video.videoId)")
-                            }
+                            // Handle failure silently
                         }
                     }
                 }) {
@@ -1072,14 +1097,6 @@ struct VideoCard: View {
                             .font(.title2)
                             .foregroundColor(.red)
                     }
-                }
-            }
-            .onAppear {
-                // Validate thumbnail URL
-                if let url = URL(string: video.thumbnail) {
-                    print("Loading thumbnail: \(url)")
-                } else {
-                    print("Invalid thumbnail URL: \(video.thumbnail)")
                 }
             }
             
@@ -1181,23 +1198,26 @@ struct VideoCarouselCard: View {
                     
                     if let url = URL(string: videoUrl) {
                         UIApplication.shared.open(url) { success in
-                            if !success {
-                                print("Failed to open YouTube video: \(video.videoId)")
-                            }
+                            // Handle failure silently
                         }
                     }
                 }) {
                     ZStack {
                         Circle()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.95),
-                                        Color.white.opacity(0.85)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.white.opacity(0.4),
+                                                Color.white.opacity(0.2)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
                             )
                             .frame(width: 70, height: 70)
                             .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 8)
@@ -1221,7 +1241,11 @@ struct VideoCarouselCard: View {
                             .padding(.vertical, 4)
                             .background(
                                 Capsule()
-                                    .fill(Color.black.opacity(0.7))
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                                    )
                             )
                     }
                     
@@ -1231,12 +1255,7 @@ struct VideoCarouselCard: View {
                 .padding(.top, 12)
             }
             .onAppear {
-                // Validate thumbnail URL
-                if let url = URL(string: video.thumbnail) {
-                    print("Loading thumbnail: \(url)")
-                } else {
-                    print("Invalid thumbnail URL: \(video.thumbnail)")
-                }
+                // Validate thumbnail URL silently
             }
             
             // Video content
@@ -1264,9 +1283,7 @@ struct VideoCarouselCard: View {
                     
                     if let url = URL(string: videoUrl) {
                         UIApplication.shared.open(url) { success in
-                            if !success {
-                                print("Failed to open YouTube video: \(video.videoId)")
-                            }
+                            // Handle failure silently
                         }
                     }
                 }) {
@@ -1282,18 +1299,23 @@ struct VideoCarouselCard: View {
                     .padding(.vertical, 8)
                     .background(
                         Capsule()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.themeButton,
-                                        Color.themeAccent
-                                    ]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                Capsule()
+                                    .stroke(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.themeButton.opacity(0.6),
+                                                Color.themeAccent.opacity(0.4)
+                                            ]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ),
+                                        lineWidth: 1
+                                    )
                             )
                     )
-                    .shadow(color: Color.themeButton.opacity(0.3), radius: 5, x: 0, y: 2)
+                    .shadow(color: Color.themeButton.opacity(0.2), radius: 8, x: 0, y: 4)
                 }
             }
             .padding(.horizontal, 16)
@@ -1302,7 +1324,21 @@ struct VideoCarouselCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(Color.themeCardBackground)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.3),
+                                    Color.white.opacity(0.1)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
                 .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
         )
     }

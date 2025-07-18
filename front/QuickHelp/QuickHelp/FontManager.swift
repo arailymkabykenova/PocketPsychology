@@ -12,39 +12,6 @@ struct FontManager {
     
     // Alternative names that might be inside the font files
     static let sfProRoundedHeavyAlt = "SFProRounded-Heavy"
-    
-    // Debug function to check available fonts
-    static func printAvailableFonts() {
-        print("🔍 Checking available fonts...")
-        for family in UIFont.familyNames.sorted() {
-            let names = UIFont.fontNames(forFamilyName: family)
-            print("📁 Family: \(family)")
-            print("   Fonts: \(names)")
-            
-            // Check specifically for SF Pro Rounded
-            if family.contains("SF Pro") || family.contains("Rounded") {
-                print("🎯 Found SF Pro Rounded family: \(family)")
-                print("   Available fonts: \(names)")
-            }
-        }
-        
-        // Check if our specific fonts are available
-        let allFontNames = UIFont.familyNames.flatMap { UIFont.fontNames(forFamilyName: $0) }
-        print("🔎 Looking for our specific fonts:")
-        
-        let heavyFontNames = [sfProRoundedHeavy, sfProRoundedHeavyAlt, "SF Pro Rounded Heavy", "SFProRounded-Heavy"]
-        let semiboldFontNames = [sfProRoundedSemibold, "SF Pro Rounded Semibold", "SFProRounded-Semibold"]
-        
-        print("   Heavy fonts:")
-        for name in heavyFontNames {
-            print("     \(name): \(allFontNames.contains(name) ? "✅ Found" : "❌ Not found")")
-        }
-        
-        print("   Semibold fonts:")
-        for name in semiboldFontNames {
-            print("     \(name): \(allFontNames.contains(name) ? "✅ Found" : "❌ Not found")")
-        }
-    }
 }
 
 extension Font {
@@ -61,8 +28,6 @@ extension Font {
         return Font.custom(fontName, size: size)
     }
     
-
-    
     static func sfProRoundedHeavy(size: CGFloat) -> Font {
         // Try different possible font names
         let fontNames = [
@@ -75,18 +40,12 @@ extension Font {
         for fontName in fontNames {
             if UIFont.fontNames(forFamilyName: "SF Pro Rounded").contains(fontName) || 
                UIFont.familyNames.contains(fontName) {
-                print("✅ Using custom font: \(fontName)")
                 return Font.custom(fontName, size: size)
             }
         }
         
-        print("⚠️ Custom font not found, using system font")
         return Font.system(size: size, weight: .black, design: .rounded)
     }
-    
-
-    
-
     
     static func sfProRoundedSemibold(size: CGFloat) -> Font {
         // Try different possible font names
@@ -99,16 +58,12 @@ extension Font {
         for fontName in fontNames {
             if UIFont.fontNames(forFamilyName: "SF Pro Rounded").contains(fontName) || 
                UIFont.familyNames.contains(fontName) {
-                print("✅ Using custom font: \(fontName)")
                 return Font.custom(fontName, size: size)
             }
         }
         
-        print("⚠️ Custom font not found, using system font")
         return Font.system(size: size, weight: .semibold, design: .rounded)
     }
-    
-
 }
 
 // MARK: - Predefined Font Styles

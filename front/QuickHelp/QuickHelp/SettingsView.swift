@@ -129,16 +129,11 @@ struct SettingsView: View {
                         
                         // Dismiss settings and show success message
                         dismiss()
-                        
-                        // You might want to show a success alert here
-                        print("Account deleted successfully")
                     }
-                } else {
-                    print("Failed to delete account: HTTP \(httpResponse.statusCode)")
                 }
             }
         } catch {
-            print("Error deleting account: \(error)")
+            // Handle error silently
         }
         
         isDeleting = false
