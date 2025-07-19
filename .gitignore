@@ -102,3 +102,4 @@ staticfiles/
 # Ignore backend cache
 back/__pycache__/
 back/venv/ 
+*.xcuserstate
