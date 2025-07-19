@@ -157,23 +157,25 @@ struct LaunchScreenView: View {
     }
     
     private func startAnimations() {
-        // Start wave animations
-        withAnimation(.linear(duration: 8).repeatForever(autoreverses: false)) {
-            waveOffset1 = .pi * 2
-        }
-        
-        withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) {
-            waveOffset2 = .pi * 2
-        }
-        
-        withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) {
-            waveOffset3 = .pi * 2
-        }
-        
-        // Start text animations
-        withAnimation(.easeOut(duration: 1.2).delay(0.3)) {
+        // Start text animations immediately for faster perceived startup
+        withAnimation(.easeOut(duration: 0.8)) {
             textOpacity = 1
             textScale = 1.0
+        }
+        
+        // Start wave animations after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation(.linear(duration: 8).repeatForever(autoreverses: false)) {
+                waveOffset1 = .pi * 2
+            }
+            
+            withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) {
+                waveOffset2 = .pi * 2
+            }
+            
+            withAnimation(.linear(duration: 4).repeatForever(autoreverses: false)) {
+                waveOffset3 = .pi * 2
+            }
         }
     }
 }

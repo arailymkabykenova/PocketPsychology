@@ -50,8 +50,8 @@ class ChatService: ObservableObject {
             self.currentLanguage = language
         }
         
-        // Test connection on init
-        DispatchQueue.main.async {
+        // Test connection later to avoid blocking app startup
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
             Task {
                 await self.testConnection()
             }

@@ -11,15 +11,15 @@ struct OnboardingView: View {
             OnboardingPage(
                 title: localizationManager.currentLanguage == .russian ? "Добро пожаловать в QuickHelp" : "Welcome to QuickHelp",
                 description: localizationManager.currentLanguage == .russian ? 
-                    "Ваш ИИ-компаньон для эмоциональной поддержки и личностного роста" :
-                    "Your AI companion for emotional support and personal growth",
+                    "Ваш ИИ-компаньон для эмоциональной поддержки и роста" :
+                    "Your AI companion for emotional support and growth",
                 icon: "heart.fill",
                 color: .pink
             ),
             OnboardingPage(
                 title: localizationManager.currentLanguage == .russian ? "Три режима общения" : "Three Conversation Modes",
                 description: localizationManager.currentLanguage == .russian ?
-                    "Поддержка, Анализ и Практика - выберите то, что подходит именно вам" :
+                    "Поддержка, Анализ и Практика - выберите подходящий режим" :
                     "Support, Analysis, and Practice - choose what works best for you",
                 icon: "message.circle.fill",
                 color: .blue
@@ -27,7 +27,7 @@ struct OnboardingView: View {
             OnboardingPage(
                 title: localizationManager.currentLanguage == .russian ? "Персонализированный контент" : "Personalized Content",
                 description: localizationManager.currentLanguage == .russian ?
-                    "Получайте статьи, видео и цитаты, подобранные под ваши интересы" :
+                    "Получайте статьи, видео и цитаты под ваши интересы" :
                     "Get articles, videos, and quotes tailored to your interests",
                 icon: "sparkles",
                 color: .orange
@@ -35,7 +35,7 @@ struct OnboardingView: View {
             OnboardingPage(
                 title: localizationManager.currentLanguage == .russian ? "Ваша конфиденциальность важна" : "Your Privacy Matters",
                 description: localizationManager.currentLanguage == .russian ?
-                    "Все ваши данные остаются на устройстве. Начните свой путь безопасно." :
+                    "Все данные остаются на устройстве. Начните путь безопасно." :
                     "All your data stays on your device. Start your journey safely.",
                 icon: "lock.shield.fill",
                 color: .green
@@ -114,7 +114,7 @@ struct OnboardingView: View {
                                         .font(.system(size: 16, weight: .medium))
                                 }
                             }
-                            .foregroundColor(.white)
+                            .foregroundColor(.white.opacity(1.0))
                             .padding(.horizontal, 24)
                             .padding(.vertical, 12)
                             .background(
@@ -205,17 +205,19 @@ struct OnboardingPageView: View {
             // Content
             VStack(spacing: 16) {
                 Text(page.title)
-                    .font(.sfProRoundedHeavy(size: 28))
+                    .font(.sfProRoundedHeavy(size: 24))
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 Text(page.description)
-                    .font(.sfProRoundedSemibold(size: 16))
+                    .font(.sfProRoundedSemibold(size: 15))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(nil)
             }
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 40)
             
             Spacer()
         }

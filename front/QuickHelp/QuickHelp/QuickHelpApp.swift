@@ -7,7 +7,8 @@ struct QuickHelpApp: App {
     @AppStorage("selected_language") private var selectedLanguage: String = ""
     
     init() {
-        // Initialize fonts silently
+        // Initialize fonts once for faster startup
+        FontManager.initializeFonts()
     }
     
     var body: some Scene {
@@ -39,28 +40,28 @@ struct QuickHelpApp: App {
                 }
             }
             .onAppear {
+                // Show launch screen immediately
+                currentStep = .launchScreen
                 startAppFlow()
             }
         }
     }
     
     private func startAppFlow() {
-        // Show launch screen for 3 seconds
+        // Show launch screen for 3 seconds, then proceed to next step
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            withAnimation(.easeInOut(duration: 0.8)) {
-                // Check if user has actually selected a language (not just default)
-                let hasSelectedLanguage = LocalizationManager.shared.hasUserSelectedLanguage()
-                
-                if hasCompletedOnboarding && hasSelectedLanguage {
-                    // Skip to main app if both onboarding and language selection were completed
-                    currentStep = .mainApp
-                } else if !hasSelectedLanguage {
-                    // Show language selection first if language not selected
-                    currentStep = .languageSelection
-                } else {
-                    // Show onboarding if language selected but onboarding not completed
-                    currentStep = .onboarding
-                }
+            // Check if user has actually selected a language (not just default)
+            let hasSelectedLanguage = LocalizationManager.shared.hasUserSelectedLanguage()
+            
+            if hasCompletedOnboarding && hasSelectedLanguage {
+                // Skip to main app if both onboarding and language selection were completed
+                currentStep = .mainApp
+            } else if !hasSelectedLanguage {
+                // Show language selection first if language not selected
+                currentStep = .languageSelection
+            } else {
+                // Show onboarding if language selected but onboarding not completed
+                currentStep = .onboarding
             }
         }
     }

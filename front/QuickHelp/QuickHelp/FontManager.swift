@@ -12,6 +12,45 @@ struct FontManager {
     
     // Alternative names that might be inside the font files
     static let sfProRoundedHeavyAlt = "SFProRounded-Heavy"
+    
+    // Cache for font availability to avoid repeated checks
+    static var heavyFontName: String?
+    static var semiboldFontName: String?
+    
+    static func initializeFonts() {
+        // Pre-check font availability once
+        heavyFontName = findAvailableFontName(for: .heavy)
+        semiboldFontName = findAvailableFontName(for: .semibold)
+    }
+    
+    private static func findAvailableFontName(for weight: FontWeight) -> String {
+        let fontNames: [String]
+        
+        switch weight {
+        case .heavy:
+            fontNames = [
+                sfProRoundedHeavy,
+                sfProRoundedHeavyAlt,
+                "SF Pro Rounded Heavy",
+                "SFProRounded-Heavy"
+            ]
+        case .semibold:
+            fontNames = [
+                sfProRoundedSemibold,
+                "SF Pro Rounded Semibold",
+                "SFProRounded-Semibold"
+            ]
+        }
+        
+        for fontName in fontNames {
+            if UIFont.fontNames(forFamilyName: "SF Pro Rounded").contains(fontName) || 
+               UIFont.familyNames.contains(fontName) {
+                return fontName
+            }
+        }
+        
+        return ""
+    }
 }
 
 extension Font {
@@ -29,39 +68,22 @@ extension Font {
     }
     
     static func sfProRoundedHeavy(size: CGFloat) -> Font {
-        // Try different possible font names
-        let fontNames = [
-            FontManager.sfProRoundedHeavy,
-            FontManager.sfProRoundedHeavyAlt,
-            "SF Pro Rounded Heavy",
-            "SFProRounded-Heavy"
-        ]
-        
-        for fontName in fontNames {
-            if UIFont.fontNames(forFamilyName: "SF Pro Rounded").contains(fontName) || 
-               UIFont.familyNames.contains(fontName) {
-                return Font.custom(fontName, size: size)
-            }
+        // Use cached font name if available
+        if let fontName = FontManager.heavyFontName, !fontName.isEmpty {
+            return Font.custom(fontName, size: size)
         }
         
+        // Fallback to system font
         return Font.system(size: size, weight: .black, design: .rounded)
     }
     
     static func sfProRoundedSemibold(size: CGFloat) -> Font {
-        // Try different possible font names
-        let fontNames = [
-            FontManager.sfProRoundedSemibold,
-            "SF Pro Rounded Semibold",
-            "SFProRounded-Semibold"
-        ]
-        
-        for fontName in fontNames {
-            if UIFont.fontNames(forFamilyName: "SF Pro Rounded").contains(fontName) || 
-               UIFont.familyNames.contains(fontName) {
-                return Font.custom(fontName, size: size)
-            }
+        // Use cached font name if available
+        if let fontName = FontManager.semiboldFontName, !fontName.isEmpty {
+            return Font.custom(fontName, size: size)
         }
         
+        // Fallback to system font
         return Font.system(size: size, weight: .semibold, design: .rounded)
     }
 }
